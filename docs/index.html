@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Shoplane Architecture</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Interactive hybrid architecture for Shoplane: an e-commerce store on AWS with an AI layer on Google Cloud, built phase by phase with Terraform.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a blueprint bench. Header, then a flow toolbar over a wide diagram with a narration rail beside it; reference sections below. */
+:root {
+  --paper: #f3f5f4;
+  --sheet: #ffffff;
+  --ink: #15211f;
+  --ink-2: #4a5a57;
+  --rule: #d4dcda;
+  --grid: #e5ebe9;
+  --teal: #0f6b62;
+  --teal-soft: #dcefeb;
+  --amber: #d9820b;
+  --amber-soft: #fbecd3;
+  --c-edge: #2f6fd6;
+  --c-compute: #d0661f;
+  --c-data: #5a4fcf;
+  --c-serverless: #c23b7a;
+  --c-ai: #1f8a4c;
+  --c-ops: #5b6b78;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1514; --sheet: #161e1d; --ink: #e4ecea; --ink-2: #9db0ac; --rule: #2a3735; --grid: #1c2725;
+    --teal: #4cc3b4; --teal-soft: #173a36; --amber: #f2a93b; --amber-soft: #3b2c12;
+    --c-edge: #6aa1ff; --c-compute: #f08a46; --c-data: #9a90ff; --c-serverless: #f070ad; --c-ai: #4cc77f; --c-ops: #95a6b3;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1514; --sheet: #161e1d; --ink: #e4ecea; --ink-2: #9db0ac; --rule: #2a3735; --grid: #1c2725;
+  --teal: #4cc3b4; --teal-soft: #173a36; --amber: #f2a93b; --amber-soft: #3b2c12;
+  --c-edge: #6aa1ff; --c-compute: #f08a46; --c-data: #9a90ff; --c-serverless: #f070ad; --c-ai: #4cc77f; --c-ops: #95a6b3;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--paper); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 1440px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 28px 64px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2rem, 4.5vw, 3.1rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.05; }
+h2 { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.01em; }
+h3 { font-size: 1.05rem; font-weight: 600; }
+p { margin: 0; }
+.mono { font-family: var(--f-mono); }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--teal); }
+
+header.top { display: grid; gap: 14px; padding-bottom: 22px; border-bottom: 1px solid var(--rule); }
+.lede { max-width: 68ch; color: var(--ink-2); font-size: 1.05rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-family: var(--f-mono); font-size: 12px; padding: 4px 10px; border: 1px solid var(--rule); border-radius: 999px; background: var(--sheet); color: var(--ink-2); }
+.chip b { color: var(--ink); font-weight: 500; }
+
+/* Explorer */
+.explorer { margin-top: 24px; display: grid; gap: 14px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: end; justify-content: space-between; }
+.flows { display: flex; flex-wrap: wrap; gap: 8px; }
+.flows button { font: 500 14px var(--f-body); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.flows button .k { font-family: var(--f-mono); font-size: 11px; color: var(--ink-2); }
+.flows button[aria-pressed="true"] { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.flows button[aria-pressed="true"] .k { color: var(--paper); opacity: .7; }
+.flows button:hover { border-color: var(--teal); }
+button:focus-visible, [tabindex]:focus-visible, input:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.phase-ctl { display: grid; gap: 4px; min-width: 260px; }
+.phase-ctl label { font-size: 13px; color: var(--ink-2); }
+.phase-ctl label b { color: var(--ink); font-weight: 600; }
+.phase-ctl input { width: 100%; accent-color: var(--teal); }
+.ticks { display: flex; justify-content: space-between; font-family: var(--f-mono); font-size: 11px; color: var(--ink-2); padding: 0 2px; }
+
+.bench { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+.stage { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; overflow-x: auto; min-width: 0; }
+.stage svg { display: block; width: 100%; min-width: 980px; height: auto; }
+.rail { display: grid; gap: 14px; min-width: 0; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+.card { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; display: grid; gap: 10px; min-width: 0; }
+.step-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.step-count { white-space: nowrap; font-family: var(--f-mono); font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.step-title { font-family: var(--f-display); font-weight: 600; font-size: 1.15rem; line-height: 1.25; }
+.step-body { color: var(--ink-2); font-size: 14.5px; }
+.controls { display: flex; gap: 8px; }
+.controls button { flex: 1; font: 500 14px var(--f-body); padding: 8px 10px; border-radius: 8px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); cursor: pointer; }
+.controls button.primary { background: var(--teal); color: var(--sheet); border-color: var(--teal); }
+.controls button:disabled { opacity: .45; cursor: default; }
+.dots { display: flex; flex-wrap: wrap; gap: 5px; }
+.dots button { width: 22px; height: 6px; border-radius: 3px; border: 0; padding: 0; background: var(--rule); cursor: pointer; }
+.dots button.on { background: var(--amber); }
+.dots button.done { background: var(--teal); }
+
+.comp-title { display: flex; align-items: center; gap: 10px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.comp-title h3 { font-size: 1.2rem; }
+.comp-svc { font-family: var(--f-mono); font-size: 12px; color: var(--ink-2); }
+.kv { display: grid; gap: 8px; }
+.kv div { display: grid; gap: 2px; }
+.kv dt { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); }
+.kv dd { margin: 0; font-size: 14px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { font-family: var(--f-mono); font-size: 11.5px; padding: 2px 8px; border-radius: 4px; background: var(--paper); border: 1px solid var(--rule); }
+.tag.have { background: var(--teal-soft); border-color: transparent; color: var(--teal); }
+.tag.gap { background: var(--amber-soft); border-color: transparent; color: var(--amber); }
+.hint { font-size: 13px; color: var(--ink-2); }
+
+/* SVG */
+.zone rect { fill: none; stroke: var(--rule); stroke-width: 1.2; }
+.zone.vpc rect { stroke: var(--teal); stroke-dasharray: 6 4; }
+.zone text { font: 500 11px var(--f-mono); letter-spacing: .08em; fill: var(--ink-2); text-transform: uppercase; }
+.az line { stroke: var(--rule); stroke-dasharray: 3 5; }
+.zone.gcp rect { stroke: var(--c-ai); stroke-dasharray: 6 4; }
+.zone.gcp text { fill: var(--c-ai); }
+.boundary line { stroke: var(--ink-2); stroke-width: 1.2; stroke-dasharray: 2 4; }
+.boundary text { font: 500 11px var(--f-mono); fill: var(--ink-2); }
+.az text, .subnet text { font: 400 10.5px var(--f-mono); fill: var(--ink-2); }
+.subnet rect { fill: var(--grid); stroke: none; }
+.edge { fill: none; stroke: var(--rule); stroke-width: 1.3; transition: stroke .2s, opacity .2s; }
+.edge.inflow { stroke: var(--ink-2); stroke-width: 1.6; opacity: .55; }
+.edge.active { stroke: var(--amber); stroke-width: 2.6; opacity: 1; }
+.edge.dim { opacity: .12; }
+.node { cursor: pointer; transition: opacity .2s; }
+.node rect.box { fill: var(--sheet); stroke: var(--rule); stroke-width: 1.3; }
+.node.later rect.box { stroke-dasharray: 5 4; }
+.node .lbl { font: 600 12.5px var(--f-body); fill: var(--ink); }
+.node .sub { font: 400 10.5px var(--f-body); fill: var(--ink-2); }
+.node.inflow rect.box { stroke: var(--ink-2); }
+.node.active rect.box { stroke: var(--amber); stroke-width: 2.4; fill: var(--amber-soft); }
+.node.selected rect.box { stroke: var(--teal); stroke-width: 2.4; }
+.node.dim { opacity: .2; }
+.node:hover rect.box { stroke: var(--teal); }
+.pulse { fill: var(--amber); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); padding: 10px 14px; border-top: 1px solid var(--rule); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.legend .dash { width: 18px; height: 0; border-top: 2px dashed var(--ink-2); border-radius: 0; }
+
+/* Reference sections */
+section.ref { margin-top: 56px; display: grid; gap: 16px; }
+section.ref > p { max-width: 72ch; color: var(--ink-2); }
+.table-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 12px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; min-width: 860px; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 12px 14px; border-bottom: 1px solid var(--rule); }
+th { font: 500 11px var(--f-mono); letter-spacing: .07em; text-transform: uppercase; color: var(--ink-2); background: var(--paper); }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .ph { font-family: var(--f-display); font-weight: 800; font-size: 1.3rem; color: var(--teal); }
+td.wait { color: var(--amber); }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.decision { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 16px; display: grid; gap: 8px; }
+.decision .pick { font-family: var(--f-mono); font-size: 12px; color: var(--teal); }
+.decision p { font-size: 14px; color: var(--ink-2); }
+.modlist { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.modlist .card h3 { display: flex; justify-content: space-between; gap: 8px; }
+.modlist ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--ink-2); display: grid; gap: 3px; }
+.modlist code { font-family: var(--f-mono); font-size: 12.5px; color: var(--ink); }
+footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule); font-size: 13px; color: var(--ink-2); }
+
+@media (max-width: 1100px) {
+  .bench { grid-template-columns: 1fr; }
+  .rail { position: static; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">Phase 1 · Architecture design</span>
+    <h1>Shoplane: an AI-assisted store on AWS and Google Cloud</h1>
+    <p class="lede">Shoplane is a small e-commerce site built one production upgrade at a time. The store runs on AWS: a highly available 3-tier core, serverless checkout and a security layer. The AI layer runs on Google Cloud: semantic search, a Gemini shopping assistant and recommendations, reached over HTTPS with keyless Workload Identity Federation. Pick a flow below to watch a request travel through the system, or click any box to see what it does and why it was chosen.</p>
+    <div class="chips">
+      <span class="chip">AWS <b>us-east-1</b></span><span class="chip">Google Cloud <b>us-east4</b></span>
+      <span class="chip">Availability Zones <b>2</b></span>
+      <span class="chip">IaC <b>Terraform · aws + google providers</b></span>
+      <span class="chip">Build phases <b>9</b></span>
+      <span class="chip">Status <b>design only, nothing deployed</b></span>
+    </div>
+  </header>
+
+  <div class="explorer">
+    <div class="toolbar">
+      <div class="flows" id="flows" role="group" aria-label="Request flows"></div>
+      <div class="phase-ctl">
+        <label for="phase">Show the system as of <b id="phaseName">Phase 9 · Operate</b></label>
+        <input type="range" id="phase" min="2" max="9" step="1" value="9">
+        <div class="ticks"><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div>
+      </div>
+    </div>
+
+    <div class="bench">
+      <div class="stage">
+        <svg id="diagram" viewBox="0 0 1280 870" role="img" aria-label="Shoplane architecture diagram"></svg>
+        <div class="legend" id="legend"></div>
+      </div>
+      <aside class="rail">
+        <div class="card" aria-live="polite">
+          <div class="step-head"><span class="eyebrow" id="flowName">Flow</span><span class="step-count" id="stepCount"></span></div>
+          <div class="step-title" id="stepTitle"></div>
+          <p class="step-body" id="stepBody"></p>
+          <div class="dots" id="dots"></div>
+          <div class="controls">
+            <button type="button" id="prev">Back</button>
+            <button type="button" id="play" class="primary">Play</button>
+            <button type="button" id="next">Next</button>
+          </div>
+        </div>
+        <div class="card" id="comp"></div>
+      </aside>
+    </div>
+  </div>
+
+  <section class="ref" id="roadmap">
+    <span class="eyebrow">Build plan</span>
+    <h2>Nine phases, each one a pull request</h2>
+    <p>Each phase ends with a working demo, a short write-up of what it taught, and a teardown. Costs are rough us-east-1 list prices for the smallest sensible sizes, shown as the monthly figure if left running around the clock. In practice you build, demo and destroy in an afternoon, so a lab session costs cents to a few dollars.</p>
+    <div class="table-wrap"><table id="phaseTable">
+      <thead><tr><th>Phase</th><th>What gets built</th><th>What you learn</th><th>If left running</th><th>Teardown</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </section>
+
+  <section class="ref" id="tradeoffs">
+    <span class="eyebrow">Hybrid trade-offs</span>
+    <h2>What two clouds cost you, and what they buy</h2>
+    <p>Splitting the system across AWS and Google Cloud adds a network hop, egress charges, a second bill and a second identity model. The design keeps each one small and visible.</p>
+    <div class="grid2" id="tradeCards"></div>
+  </section>
+
+  <section class="ref" id="costs">
+    <span class="eyebrow">Cost notes</span>
+    <h2>Where the money goes</h2>
+    <p>Most of this design is pay-per-request and costs pennies at demo traffic. A handful of resources bill by the hour whether or not anyone visits. Those are the ones to destroy after every session.</p>
+    <div class="grid2" id="costCards"></div>
+  </section>
+
+  <section class="ref" id="decisions">
+    <span class="eyebrow">Key decisions</span>
+    <h2>Choices and the trade-offs behind them</h2>
+    <div class="grid2" id="decisionCards"></div>
+  </section>
+
+  <section class="ref" id="modules">
+    <span class="eyebrow">Terraform</span>
+    <h2>Module coverage in tfmodules</h2>
+    <p>Every resource is created through modules in <span class="mono">roshhegde/tfmodules</span>, from one Terraform configuration that uses both the aws and google providers. The repository already covers the AWS network, containers, serverless and identity pieces. It has no Google Cloud modules yet. Missing modules are added in the phase that first needs them, one module per cloud service.</p>
+    <div class="modlist" id="modCards"></div>
+  </section>
+
+  <footer>Shoplane architecture, phase 1. Prices are approximate list prices for AWS us-east-1 and Google Cloud us-east4 and change over time; confirm in each cloud's pricing calculator before building.</footer>
+</div>
+
+<script>
+const CAT = {
+  edge: { name: "Edge and identity", v: "--c-edge" },
+  compute: { name: "Containers and network", v: "--c-compute" },
+  data: { name: "Databases and cache", v: "--c-data" },
+  serverless: { name: "Serverless, events and data", v: "--c-serverless" },
+  gcp: { name: "Google Cloud AI layer", v: "--c-ai" },
+  ops: { name: "Security, delivery and operations", v: "--c-ops" },
+  client: { name: "People", v: "--ink-2" }
+};
+const PHASES = {
+  2: "Core app", 3: "API and events", 4: "Secure", 5: "HA and scale",
+  6: "GCP foundation and search", 7: "Shopping assistant on Gemini", 8: "Data and recommendations", 9: "Operate"
+};
+
+const N = [
+  { id: "user", x: 85, y: 230, cat: "client", phase: 2, label: "Customer", sub: "browser / mobile",
+    svc: "Not a cloud service",
+    what: "A shopper browsing the catalog, searching, chatting with the assistant and checking out.",
+    why: "Every flow starts here. Thinking from the customer's side keeps the design honest about latency and failure: they only see the page load or not.",
+    mod: null, cost: "None" },
+
+  { id: "r53", x: 255, y: 92, cat: "edge", phase: 2, label: "Route 53", sub: "DNS · health checks",
+    svc: "Amazon Route 53",
+    what: "Hosts the shoplane domain and answers DNS queries with an alias record that points to CloudFront. In phase 5 it gains health checks for failover.",
+    why: "Alias records to CloudFront are free to query and resolve at the apex domain, which a plain CNAME can't do.",
+    alt: "Registrar DNS: fewer moving parts, but no health checks or alias records.",
+    mod: { s: "gap", n: "route53" }, cost: "$0.50 per hosted zone per month, $0.50 per health check" },
+
+  { id: "waf", x: 255, y: 160, cat: "edge", phase: 4, label: "AWS WAF", sub: "web ACL at the edge",
+    svc: "AWS WAF v2",
+    what: "Inspects every request at the edge: AWS managed rules for common exploits and SQL injection, a per-IP rate limit, and a stricter limit and body-size cap on the AI assistant endpoint.",
+    why: "Attached to CloudFront it blocks bad traffic before it reaches the ALB, API Gateway or a paid Gemini call. The AI endpoint gets its own rules because each request costs real money.",
+    alt: "Shield Advanced for DDoS cost protection; too expensive ($3,000 a month) for a portfolio project. Shield Standard is on by default and free.",
+    mod: { s: "gap", n: "wafv2" }, cost: "About $5 per web ACL plus $1 per rule per month, and $0.60 per million requests" },
+
+  { id: "cf", x: 255, y: 228, cat: "edge", phase: 2, label: "CloudFront", sub: "CDN · TLS via ACM",
+    svc: "Amazon CloudFront + AWS Certificate Manager",
+    what: "One distribution with three origins: the S3 bucket for the site and product images, the ALB for catalog and search, and API Gateway for cart, checkout and the assistant. TLS certificates come from ACM.",
+    why: "A single domain for everything avoids CORS headaches, caches images close to shoppers, and gives WAF one place to attach. Customers never talk to Google Cloud directly.",
+    alt: "Separate domains per backend: simpler at first but needs CORS and a WAF per entry point.",
+    mod: { s: "gap", n: "cloudfront, acm" }, cost: "Free tier covers 1 TB of transfer a month; ACM public certificates are free" },
+
+  { id: "s3web", x: 255, y: 300, cat: "edge", phase: 2, label: "S3: site + images", sub: "private · OAC",
+    svc: "Amazon S3",
+    what: "Holds the built single-page storefront and product images. The bucket stays private and only CloudFront can read it, through Origin Access Control.",
+    why: "Static files don't need servers. Serving them from S3 behind CloudFront is cheap and scales without any work.",
+    mod: { s: "have", n: "s3-bucket" }, cost: "Cents per month at this size" },
+
+  { id: "cognito", x: 255, y: 380, cat: "edge", phase: 3, label: "Cognito", sub: "user pool · JWT",
+    svc: "Amazon Cognito",
+    what: "Customer sign-up and sign-in. Issues JWTs that API Gateway checks before cart, checkout or assistant calls reach Lambda.",
+    why: "Managed auth with no password storage to secure yourself, and the JWT authorizer on API Gateway needs no custom code. Same pattern as the job tracker project.",
+    mod: { s: "have", n: "cognito-user-pool, cognito-user-pool-client" }, cost: "Free up to 10,000 monthly active users on the Lite tier" },
+
+  { id: "nat", x: 470, y: 105, cat: "compute", phase: 2, label: "NAT Gateway", sub: "public subnet · AZ a",
+    svc: "Amazon VPC NAT Gateway",
+    what: "Lets tasks in private subnets reach the internet for outbound calls, including the HTTPS calls to Google Cloud, without being reachable from it. Gateway endpoints carry S3 and DynamoDB traffic for free instead.",
+    why: "Private subnets with no inbound route are the baseline for a 3-tier design. One NAT in dev saves about $33 a month; phase 5 adds a second so losing AZ a doesn't cut off AZ b.",
+    alt: "Interface VPC endpoints for ECR, Secrets Manager and CloudWatch: about $7 per endpoint per AZ, so a NAT is cheaper until you need several.",
+    mod: { s: "have", n: "vpc, subnet, nat-gateway, route-table, route" }, cost: "About $33 a month plus $0.045 per GB. The single most expensive idle item on AWS." },
+
+  { id: "alb", x: 660, y: 105, cat: "compute", phase: 2, label: "Application LB", sub: "spans AZ a + b",
+    svc: "Elastic Load Balancing (ALB)",
+    what: "Receives catalog and search traffic from CloudFront and spreads it across healthy Fargate tasks in both AZs. Health checks pull failing tasks out of rotation.",
+    why: "The ALB is what makes the web tier highly available: it lives in two AZs and only sends traffic to tasks that pass health checks. A security group lets in only CloudFront's managed prefix list.",
+    alt: "API Gateway in front of everything: works, but ALB to containers is the classic 3-tier pattern recruiters expect to see.",
+    mod: { s: "gap", n: "alb" }, cost: "About $16 a month plus load balancer capacity units" },
+
+  { id: "ecsA", x: 470, y: 205, cat: "compute", phase: 2, label: "Catalog service", sub: "ECS Fargate · AZ a",
+    svc: "Amazon ECS on AWS Fargate (image in ECR)",
+    what: "A small containerised API (Python FastAPI) for product listing, product pages and search. For a search it asks the AI service on Google Cloud for matching product IDs, then loads those products from Postgres.",
+    why: "Containers on Fargate mean no servers to patch and per-second billing. Two tasks in two AZs is the minimum for HA. If Google Cloud is slow or down, search falls back to a plain SQL keyword search, so the store keeps working.",
+    alt: "EC2 Auto Scaling group: the textbook SAA answer, more to manage. EKS: in demand, but the control plane alone adds about $73 a month.",
+    mod: { s: "gap", n: "ecs (cluster, service, task definition)" }, cost: "About $7 a month per 0.25 vCPU / 0.5 GB ARM task" },
+
+  { id: "ecsB", x: 660, y: 205, cat: "compute", phase: 2, label: "Catalog service", sub: "ECS Fargate · AZ b",
+    svc: "Amazon ECS on AWS Fargate",
+    what: "The second copy of the catalog service, in the other Availability Zone. ECS keeps the desired count running and replaces tasks that fail.",
+    why: "If AZ a has a bad day, this task keeps serving while ECS starts a replacement. Phase 5 adds target-tracking autoscaling on CPU and request count.",
+    mod: { s: "gap", n: "ecs" }, cost: "About $7 a month per task" },
+
+  { id: "rdsP", x: 470, y: 300, cat: "data", phase: 2, label: "RDS PostgreSQL", sub: "primary · AZ a",
+    svc: "Amazon RDS for PostgreSQL",
+    what: "Source of truth for products, prices, inventory and FAQ articles. Every product change is also published as an event so the AI layer on Google Cloud can re-embed it.",
+    why: "Relational data with real constraints. The vectors now live in Vertex AI Vector Search, so Postgres stays a plain transactional database and also serves the keyword-search fallback.",
+    alt: "Aurora Serverless v2: faster failover, higher minimum cost. pgvector in this database: cheaper than Vector Search, kept as the fallback option if GCP costs run high.",
+    mod: { s: "gap", n: "rds (instance, subnet group, parameter group)" }, cost: "About $12 a month for db.t4g.micro single-AZ, plus about $2.30 for 20 GB" },
+
+  { id: "rdsS", x: 660, y: 300, cat: "data", phase: 5, label: "RDS standby", sub: "Multi-AZ · AZ b",
+    svc: "Amazon RDS Multi-AZ",
+    what: "A synchronous standby copy of the database in AZ b. If the primary fails, RDS flips the DNS name to the standby, usually within one to two minutes.",
+    why: "This is the data-tier half of high availability. It is not a read replica: it serves no traffic until a failover.",
+    alt: "Read replicas for scaling reads; a later option once the cache isn't enough.",
+    mod: { s: "gap", n: "rds (multi_az = true)" }, cost: "Doubles the instance cost, about +$12 a month" },
+
+  { id: "cache", x: 565, y: 375, cat: "data", phase: 5, label: "ElastiCache", sub: "Valkey · 2 nodes",
+    svc: "Amazon ElastiCache (Valkey)",
+    what: "Caches product pages, category listings and recent search results, so most reads never touch Postgres or cross to Google Cloud.",
+    why: "Product data is read far more than it is written. Caching search results also cuts cross-cloud calls, which saves latency and egress.",
+    alt: "CloudFront caching of API responses: helps for anonymous pages, less so for personalised ones.",
+    mod: { s: "gap", n: "elasticache" }, cost: "About $12 a month per cache.t4g.micro node" },
+
+  { id: "apigw", x: 860, y: 90, cat: "serverless", phase: 3, label: "API Gateway", sub: "HTTP API · JWT auth",
+    svc: "Amazon API Gateway (HTTP API)",
+    what: "Front door for cart, checkout, the assistant and clickstream events. Validates Cognito JWTs, throttles, and routes each path to a Lambda function or straight to EventBridge.",
+    why: "Spiky, transactional endpoints fit pay-per-request serverless. The job tracker already uses these modules, so this phase reuses proven code.",
+    mod: { s: "have", n: "apigatewayv2-api, -route, -integration, -authorizer, -stage" }, cost: "$1 per million requests" },
+
+  { id: "lOrders", x: 860, y: 180, cat: "serverless", phase: 3, label: "Lambda: orders", sub: "cart · checkout",
+    svc: "AWS Lambda",
+    what: "Adds and removes cart items, then starts the checkout workflow when the customer places an order.",
+    why: "Short, stateless handlers that only run when someone shops. Idempotency keys stop a double-click from creating two orders.",
+    mod: { s: "have", n: "lambda-function, lambda-permission" }, cost: "Free tier covers 1 million requests a month" },
+
+  { id: "lAssist", x: 860, y: 270, cat: "serverless", phase: 7, label: "Lambda: AI proxy", sub: "AWS → GCP bridge",
+    svc: "AWS Lambda",
+    what: "Receives assistant requests after API Gateway has checked the customer's JWT, adds the recent chat history from DynamoDB, then calls the AI service on Cloud Run with a short-lived Google token.",
+    why: "Customer auth, rate limits and chat history stay on AWS where the customer account lives. Google Cloud only ever sees a signed call from one AWS role, never a customer token.",
+    learn: "How one cloud calls another without secrets: AWS credentials are exchanged for a Google token through Workload Identity Federation.",
+    mod: { s: "have", n: "lambda-function" }, cost: "Pennies; the Gemini call is the real cost" },
+
+  { id: "lWorkers", x: 860, y: 360, cat: "serverless", phase: 3, label: "Lambda: workers", sub: "fulfil · sync · recs",
+    svc: "AWS Lambda",
+    what: "Background jobs: process fulfilment messages from SQS, push changed products to Google Cloud for re-embedding (phase 6), and load the nightly recommendations from Cloud Storage into DynamoDB (phase 8).",
+    why: "Work the customer shouldn't wait for happens asynchronously, with retries and a dead-letter queue. All cross-cloud calls start from AWS, so identity only has to be trusted in one direction.",
+    mod: { s: "have", n: "lambda-function" }, cost: "Pennies" },
+
+  { id: "ddb", x: 1020, y: 90, cat: "serverless", phase: 3, label: "DynamoDB", sub: "carts · orders · recs",
+    svc: "Amazon DynamoDB",
+    what: "On-demand tables: carts and chat sessions (with TTL so abandoned ones expire), orders keyed by customer, and the recommendations copied back from Google Cloud each night.",
+    why: "Key-value access at any scale and it costs nothing when idle. Serving recommendations from here means product pages never wait on a cross-cloud call.",
+    mod: { s: "have", n: "dynamodb-table" }, cost: "Cents at demo traffic" },
+
+  { id: "sfn", x: 1020, y: 180, cat: "serverless", phase: 3, label: "Step Functions", sub: "checkout workflow",
+    svc: "AWS Step Functions",
+    what: "Orchestrates checkout: validate the cart, reserve stock, take a mock payment, confirm the order, and roll back the reservation if payment fails.",
+    why: "A saga with compensating steps is easier to reason about as a visible state machine than as nested Lambda calls, and every execution is auditable.",
+    mod: { s: "gap", n: "step-functions" }, cost: "4,000 state transitions a month free" },
+
+  { id: "eb", x: 1020, y: 270, cat: "serverless", phase: 3, label: "EventBridge", sub: "event bus",
+    svc: "Amazon EventBridge",
+    what: "Carries OrderPlaced, ProductUpdated and clickstream events. Rules fan each event out to the queue, the notification topic, the product-sync worker and the data lake.",
+    why: "Producers don't need to know who listens. Adding the Google Cloud sync in phase 6 is a new rule, not a code change.",
+    mod: { s: "gap", n: "eventbridge" }, cost: "$1 per million events" },
+
+  { id: "sqs", x: 1180, y: 180, cat: "serverless", phase: 3, label: "SQS", sub: "fulfilment + DLQ",
+    svc: "Amazon SQS",
+    what: "Buffers fulfilment work. Messages that fail three times land in a dead-letter queue with an alarm on it.",
+    why: "Decouples order placement from fulfilment so a slow downstream never blocks checkout.",
+    mod: { s: "gap", n: "sqs" }, cost: "First million requests a month free" },
+
+  { id: "sns", x: 1180, y: 270, cat: "serverless", phase: 3, label: "SNS", sub: "order emails",
+    svc: "Amazon SNS",
+    what: "Sends the order confirmation email to the customer and an alert to the store owner.",
+    why: "Simple fan-out notifications with no servers. Can be swapped for SES later for branded email.",
+    mod: { s: "gap", n: "sns" }, cost: "Pennies" },
+
+  { id: "firehose", x: 1020, y: 360, cat: "serverless", phase: 8, label: "Data Firehose", sub: "buffer → Parquet",
+    svc: "Amazon Data Firehose",
+    what: "Buffers clickstream and order events from EventBridge, converts them to Parquet and writes date-partitioned files to the S3 data lake.",
+    why: "Managed streaming ingestion with no consumers to write or scale. Parquet keeps the files small, which matters because they are copied to Google Cloud.",
+    mod: { s: "gap", n: "firehose" }, cost: "About $0.03 per GB ingested" },
+
+  { id: "s3lake", x: 1180, y: 360, cat: "serverless", phase: 8, label: "S3 data lake", sub: "events · Parquet",
+    svc: "Amazon S3",
+    what: "The raw history of clicks and orders, kept on AWS as the system of record. Google Cloud reads a daily copy for training.",
+    why: "Keeping the raw data on AWS means the AI layer can be rebuilt or swapped without losing history.",
+    mod: { s: "have", n: "s3-bucket" }, cost: "About $0.023 per GB-month" },
+
+  /* ---------- Google Cloud ---------- */
+  { id: "wif", x: 330, y: 540, cat: "gcp", phase: 6, label: "Identity Federation", sub: "trusts AWS roles",
+    svc: "Google Cloud IAM Workload Identity Federation",
+    what: "A workload identity pool with an AWS provider for your account. It accepts a signed AWS GetCallerIdentity request from the Lambda or ECS role and returns a short-lived Google token for one service account (run.invoker and aiplatform.user only). A second provider trusts GitHub Actions for deploys.",
+    why: "No Google service-account key is ever created, stored or rotated. An attribute condition only admits the exact AWS role ARNs you list, so nothing else in the AWS account can call Google Cloud.",
+    alt: "A service-account JSON key in Secrets Manager: works, but it is a long-lived secret that can leak. Google recommends against it.",
+    learn: "Cross-cloud identity: token exchange, audiences, attribute conditions and service-account impersonation.",
+    mod: { s: "gap", n: "gcp: workload-identity-pool, service-account" }, cost: "Free" },
+
+  { id: "run", x: 560, y: 590, cat: "gcp", phase: 6, label: "AI service", sub: "Cloud Run · search · RAG",
+    svc: "Google Cloud Run (us-east4)",
+    what: "One small Python container with three routes: /search turns a query into product IDs, /assist runs the RAG loop with Gemini, and /index embeds changed products. It only accepts calls carrying a valid Google token from the federated service account.",
+    why: "Scales to zero, so it costs nothing between demos, and runs in us-east4 (northern Virginia), a few milliseconds from us-east-1. Hand-written RAG in about a hundred lines shows every step.",
+    alt: "Vertex AI Agent Builder: less code, but hides the steps you want to learn. Cloud Functions: fine, but Cloud Run teaches containers on GCP.",
+    learn: "Embeddings, top-k retrieval, context windows, prompt templates, grounding and citations.",
+    mod: { s: "gap", n: "gcp: cloud-run-service" }, cost: "Free tier covers 2 million requests a month; scales to zero" },
+
+  { id: "embed", x: 790, y: 540, cat: "gcp", phase: 6, label: "Embeddings", sub: "Vertex AI text model",
+    svc: "Vertex AI Text Embeddings",
+    what: "Turns product text, FAQ chunks and search queries into vectors. The same model must embed both the catalog and the queries, or the comparison means nothing.",
+    why: "A managed embedding API with no endpoint to run: you pay per character embedded. Re-embedding the whole demo catalog costs cents.",
+    learn: "What an embedding is, vector dimensions, cosine similarity, why query and document models must match.",
+    mod: { s: "gap", n: "gcp: project-services (API enablement)" }, cost: "Fractions of a cent per thousand characters" },
+
+  { id: "vsearch", x: 790, y: 645, cat: "gcp", phase: 6, label: "Vector Search", sub: "index · ANN endpoint",
+    svc: "Vertex AI Vector Search",
+    what: "Stores one vector per product and FAQ chunk with filter tags (category, in stock, price band), and returns the nearest neighbours in milliseconds. Streaming updates let a changed product appear in search within seconds.",
+    why: "Approximate nearest neighbour search at Google scale, and a skill that transfers to any vector database. Only IDs and scores come back to AWS, so egress stays tiny.",
+    alt: "BigQuery VECTOR_SEARCH: pay per query, no endpoint, slower. pgvector on RDS: cheapest, but you'd learn less GCP.",
+    learn: "Approximate nearest neighbour indexes, recall versus speed, metadata filtering.",
+    mod: { s: "gap", n: "gcp: vertex-vector-search (index, endpoint)" }, cost: "The deployed endpoint bills by the hour, roughly $65 to $75 a month on the smallest machine. Undeploy it after every lab." },
+
+  { id: "gemini", x: 330, y: 645, cat: "gcp", phase: 7, label: "Gemini", sub: "Vertex AI · Flash",
+    svc: "Gemini (Flash model) on Vertex AI",
+    what: "Writes the assistant's answer from the retrieved products and FAQ chunks. A system instruction limits it to Shoplane topics and tells it to say \"I don't know\" when the context has no answer; safety settings block harmful content.",
+    why: "Available on a new Google Cloud account without a quota request, and the Flash tier is cheap enough for demos. Replaces the Bedrock plan, which was stuck waiting on AWS.",
+    alt: "Model Armor in front of Gemini to screen prompt injection: a good phase 9 addition.",
+    learn: "Tokens and pricing, temperature, system instructions, grounding, hallucination, evaluating answers.",
+    mod: { s: "gap", n: "gcp: project-services, IAM binding" }, cost: "Per token; a demo session costs cents" },
+
+  { id: "gmon", x: 110, y: 645, cat: "gcp", phase: 9, label: "Cloud Monitoring", sub: "logs · AI metrics",
+    svc: "Google Cloud Logging + Monitoring",
+    what: "Request logs, latency, Gemini tokens in and out, cost per answer and retrieval hit rate for the AI service, with alerts.",
+    why: "AI features need their own metrics because their cost scales with usage. Phase 9 links these with the CloudWatch dashboards so one request can be followed across both clouds.",
+    learn: "AI ops: latency, token spend and answer quality over time.",
+    mod: { s: "gap", n: "gcp: monitoring-alert-policy" }, cost: "Free allotment covers this scale" },
+
+  { id: "gbudget", x: 110, y: 540, cat: "gcp", phase: 6, label: "GCP budget", sub: "$20 alert · credits",
+    svc: "Google Cloud Billing budgets",
+    what: "Emails you at 50, 80 and 100 percent of a $20 monthly budget on the Google Cloud side.",
+    why: "Two clouds means two bills. Each needs its own guardrail. New accounts also get $300 of trial credit for 90 days, which covers the whole AI layer while you learn.",
+    mod: { s: "gap", n: "gcp: billing-budget" }, cost: "Free" },
+
+  { id: "sts", x: 1190, y: 540, cat: "gcp", phase: 8, label: "Storage Transfer", sub: "S3 → GCS · keyless",
+    svc: "Google Storage Transfer Service",
+    what: "Copies new Parquet files from the S3 data lake to Cloud Storage every night. It signs in to AWS by assuming an IAM role that trusts Google's service agent, so there are no AWS access keys either.",
+    why: "A managed, scheduled copy with retries. Keyless in this direction too, which completes the \"no stored keys\" story.",
+    learn: "Moving data between clouds, and what it costs: AWS bills egress per GB that leaves.",
+    mod: { s: "gap", n: "gcp: storage-transfer-job" }, cost: "Free on the Google side; AWS egress about $0.09 per GB after the first 100 GB a month" },
+
+  { id: "gcs", x: 1190, y: 645, cat: "gcp", phase: 6, label: "Cloud Storage", sub: "lake copy · recs",
+    svc: "Google Cloud Storage",
+    what: "Holds the daily copy of the lake, the FAQ text used by the assistant, model artifacts, and the nightly recommendations file that AWS picks up.",
+    why: "The landing zone every GCP data service reads natively.",
+    mod: { s: "gap", n: "gcp: storage-bucket" }, cost: "About $0.02 per GB-month" },
+
+  { id: "bq", x: 1000, y: 645, cat: "gcp", phase: 8, label: "BigQuery", sub: "analytics · baseline",
+    svc: "Google BigQuery",
+    what: "Loads the clickstream and orders from Cloud Storage. SQL answers funnel questions, top searches with no results, and the \"bought together\" counts that serve as the baseline the ML model must beat.",
+    why: "Serverless SQL with a generous free tier, and the most widely used GCP data service, so it is good exposure.",
+    learn: "Baselines and evaluation: a model has to beat a simple rule to earn its place.",
+    mod: { s: "gap", n: "gcp: bigquery-dataset" }, cost: "First 1 TB of queries and 10 GB of storage a month are free" },
+
+  { id: "vtrain", x: 1000, y: 540, cat: "gcp", phase: 8, label: "Vertex training", sub: "recs · batch job",
+    svc: "Vertex AI custom training",
+    what: "A weekly custom training job reads purchase history from BigQuery, learns item-to-item similarity, is scored against the SQL baseline, and writes each product's top 10 recommendations to Cloud Storage.",
+    why: "Batch inference means no always-on endpoint. AWS copies the results into DynamoDB, so product pages never wait on Google Cloud.",
+    alt: "BigQuery ML matrix factorization: SQL only, but needs a reserved-capacity edition. Vertex AI Search for commerce: managed but costly.",
+    learn: "Training versus inference, features and labels, offline metrics such as hit rate, batch versus real-time serving.",
+    mod: { s: "gap", n: "gcp: vertex-custom-job (via pipeline)" }, cost: "A small CPU machine runs for minutes: cents per run" },
+
+  /* ---------- AWS ops ---------- */
+  { id: "github", x: 85, y: 800, cat: "ops", phase: 2, label: "GitHub Actions", sub: "CI/CD pipeline",
+    svc: "GitHub Actions",
+    what: "Runs tests, terraform plan on pull requests, and terraform apply plus container builds and deploys on merge, for both clouds from one workflow.",
+    why: "Every phase ships as a reviewed PR with a green pipeline, which is exactly what a hiring manager wants to see in a repo.",
+    mod: null, cost: "Free for public repositories" },
+
+  { id: "iam", x: 225, y: 800, cat: "ops", phase: 2, label: "IAM + OIDC", sub: "least privilege",
+    svc: "AWS IAM",
+    what: "GitHub signs in through OIDC to a deploy role with short-lived credentials. Each Lambda and ECS task has its own role; only the AI proxy, catalog and worker roles are trusted by Google's identity pool.",
+    why: "No long-lived access keys anywhere, and a compromised function can only touch its own resources.",
+    mod: { s: "have", n: "iam-role, iam-github-oidc" }, cost: "Free" },
+
+  { id: "ecr", x: 365, y: 800, cat: "ops", phase: 2, label: "ECR", sub: "container images",
+    svc: "Amazon ECR",
+    what: "Stores the catalog service image, scanned on push. Lifecycle rules keep only recent images. The Cloud Run image lives in Google's Artifact Registry.",
+    why: "Private registry next to ECS with IAM-based pulls.",
+    mod: { s: "have", n: "ecr-repository" }, cost: "$0.10 per GB-month" },
+
+  { id: "cw", x: 505, y: 800, cat: "ops", phase: 2, label: "CloudWatch", sub: "logs · metrics · alarms",
+    svc: "Amazon CloudWatch",
+    what: "Logs from every AWS service, alarms on errors and latency, and a dashboard that tracks cross-cloud call latency and failures.",
+    why: "You can't run what you can't see, and a hybrid system adds a network hop that needs its own alarm.",
+    mod: { s: "have", n: "cloudwatch-log-group, cloudwatch-metric-alarm" }, cost: "Mostly free tier; $3 per custom dashboard" },
+
+  { id: "xray", x: 645, y: 800, cat: "ops", phase: 9, label: "X-Ray", sub: "distributed tracing",
+    svc: "AWS X-Ray",
+    what: "Traces one request across CloudFront, API Gateway, Lambda and Step Functions, including the time spent waiting on Google Cloud.",
+    why: "When the assistant feels slow, a trace shows whether it's AWS, the network hop or the model.",
+    mod: { s: "gap", n: "xray (sampling rules)" }, cost: "100,000 traces a month free" },
+
+  { id: "kms", x: 785, y: 800, cat: "ops", phase: 4, label: "KMS", sub: "customer keys",
+    svc: "AWS Key Management Service",
+    what: "Customer-managed keys encrypt RDS, DynamoDB, S3 and Secrets Manager, with key policies that limit who can decrypt.",
+    why: "Encryption at rest is on by default; your own keys add audit trails and the ability to revoke access.",
+    mod: { s: "gap", n: "kms" }, cost: "$1 per key per month" },
+
+  { id: "secrets", x: 925, y: 800, cat: "ops", phase: 4, label: "Secrets Manager", sub: "DB creds · rotation",
+    svc: "AWS Secrets Manager",
+    what: "Holds the database password with automatic rotation. It holds no Google credentials, because federation removes the need for any.",
+    why: "No secrets in code, environment files or Terraform state outputs.",
+    mod: { s: "gap", n: "secrets-manager" }, cost: "$0.40 per secret per month" },
+
+  { id: "guardduty", x: 1065, y: 800, cat: "ops", phase: 4, label: "GuardDuty", sub: "+ CloudTrail",
+    svc: "Amazon GuardDuty + AWS CloudTrail",
+    what: "CloudTrail records every API call. GuardDuty watches those logs, VPC flow logs and DNS for threats such as leaked credentials or crypto-mining.",
+    why: "Detection is the half of security people forget. Google Cloud's audit logs cover the other side.",
+    mod: { s: "gap", n: "guardduty, cloudtrail" }, cost: "30-day free trial, then a few dollars a month at this scale" },
+
+  { id: "budget", x: 1205, y: 800, cat: "ops", phase: 2, label: "AWS Budgets", sub: "$20 alert",
+    svc: "AWS Budgets",
+    what: "Emails you at 50, 80 and 100 percent of a $20 monthly budget.",
+    why: "The guardrail that catches a forgotten NAT gateway or RDS instance before it becomes a surprise bill.",
+    mod: { s: "have", n: "budget" }, cost: "Free for the first two budgets" }
+];
+const byId = Object.fromEntries(N.map(n => [n.id, n]));
+
+const FLOWS = [
+  { id: "browse", key: "A", name: "Browse and search", steps: [
+    { e: [["user","r53"]], t: "Find the site", b: "The browser asks Route 53 for shoplane's address. An alias record points it at the nearest CloudFront edge location." },
+    { e: [["user","waf"],["waf","cf"]], t: "Enter at the edge", b: "The request reaches a CloudFront edge. WAF checks it against managed rules and the rate limit before anything else runs." },
+    { e: [["cf","s3web"]], t: "Load the storefront", b: "HTML, JavaScript and product images come from the private S3 bucket, usually straight from the edge cache." },
+    { e: [["cf","alb"],["alb","ecsA"]], t: "Ask for products", b: "Calls to /api/catalog go to the Application Load Balancer, which picks a healthy Fargate task in either Availability Zone." },
+    { e: [["ecsA","cache"],["ecsA","rdsP"]], t: "Cache first, then the database", b: "The catalog service checks ElastiCache. On a miss it queries RDS PostgreSQL and caches the result with a short expiry." },
+    { e: [["ecsA","wif"]], t: "Get a Google token", b: "For a search like \"warm jacket for hiking\", the service first exchanges its AWS task-role credentials for a short-lived Google token through Workload Identity Federation. It caches the token for up to an hour." },
+    { e: [["ecsA","run"]], t: "Cross to Google Cloud", b: "It calls the AI service's /search route on Cloud Run over HTTPS with that token. us-east-1 and us-east4 are both in northern Virginia, so the hop adds only a few milliseconds." },
+    { e: [["run","embed"],["run","vsearch"]], t: "Search by meaning", b: "Cloud Run embeds the query with Vertex AI, then asks Vector Search for the nearest products that are in stock. A fleece pullover can match even though it never says \"jacket\"." },
+    { e: [["ecsA","rdsP"]], t: "Load the products on AWS", b: "Only product IDs and scores come back across the boundary. The catalog service loads prices and stock from Postgres. If Google Cloud doesn't answer within 800 ms, it falls back to a keyword search." },
+    { e: [["ecsA","ddb"]], t: "Add recommendations", b: "Product pages read the \"customers also bought\" list from DynamoDB. It was computed on Google Cloud overnight and copied here, so this is a fast local lookup." }
+  ]},
+  { id: "checkout", key: "B", name: "Checkout and order events", steps: [
+    { e: [["user","cognito"]], t: "Sign in", b: "The customer signs in with Cognito and receives a short-lived JWT access token." },
+    { e: [["user","cf"],["cf","apigw"]], t: "Place the order", b: "POST /orders goes through CloudFront and WAF to API Gateway, carrying the token and an idempotency key." },
+    { e: [["apigw","cognito"]], t: "Check who is asking", b: "The JWT authorizer verifies the token's signature and expiry against Cognito. Bad tokens are rejected before any code runs." },
+    { e: [["apigw","lOrders"],["lOrders","ddb"]], t: "Read the cart", b: "The orders Lambda loads the cart from DynamoDB and checks the idempotency key so a double-click can't create two orders." },
+    { e: [["lOrders","sfn"]], t: "Start the checkout workflow", b: "Lambda starts a Step Functions execution and immediately returns \"order received\" to the customer." },
+    { e: [["sfn","ddb"]], t: "Reserve, pay, confirm", b: "The state machine reserves stock, takes a mock payment, and writes the order as CONFIRMED. If payment fails, a compensating step releases the stock." },
+    { e: [["sfn","eb"]], t: "Announce the order", b: "The workflow publishes an OrderPlaced event to EventBridge. It doesn't know or care who is listening." },
+    { e: [["eb","sqs"],["sqs","lWorkers"]], t: "Fulfil in the background", b: "One rule sends the event to an SQS queue. A worker Lambda processes it, with retries and a dead-letter queue if it keeps failing." },
+    { e: [["eb","sns"]], t: "Email the customer", b: "Another rule triggers SNS, which emails the order confirmation." },
+    { e: [["eb","firehose"],["firehose","s3lake"]], t: "Record it for learning", b: "A third rule copies the event into Firehose, which lands it in the S3 data lake. Checkout never depends on Google Cloud." }
+  ]},
+  { id: "assistant", key: "C", name: "Shopping assistant (RAG)", steps: [
+    { e: [["user","waf"],["waf","cf"],["cf","apigw"]], t: "Ask a question", b: "\"What can I wear for a rainy weekend hike under $80?\" WAF applies a tighter rate limit and size cap on this endpoint, because every call costs money." },
+    { e: [["apigw","lAssist"],["lAssist","ddb"]], t: "Check the customer, add history", b: "API Gateway checks the JWT and invokes the AI proxy Lambda, which loads recent turns of the chat from DynamoDB so follow-ups like \"in blue?\" make sense." },
+    { e: [["lAssist","wif"]], t: "Prove who is calling", b: "The Lambda signs an AWS identity request with its role. Google's token service checks it against the workload identity pool and hands back a token for the Shoplane service account. No key is stored anywhere." },
+    { e: [["lAssist","run"]], t: "Call the AI service", b: "The question and chat history go to Cloud Run's /assist route over HTTPS. Cloud Run rejects any call without a valid token." },
+    { e: [["run","embed"],["run","vsearch"]], t: "Retrieve context", b: "The question is embedded with Vertex AI, and Vector Search returns the 5 closest products and FAQ chunks, filtered to in stock and under $80." },
+    { e: [["run","gemini"]], t: "Generate a grounded answer", b: "The prompt holds the instructions, the retrieved products and the question. Gemini writes the answer, and is told to say so when the context has no answer instead of guessing." },
+    { e: [["run","gmon"]], t: "Measure it", b: "Latency, tokens in and out, cost per answer and which products were cited go to Cloud Monitoring, so you can see what the feature really costs." },
+    { e: [["run","lAssist"],["lAssist","apigw"],["apigw","user"]], t: "Reply with sources", b: "The answer returns through AWS with links to the products it used, and the Lambda saves the turn to DynamoDB." }
+  ]},
+  { id: "sync", key: "D", name: "Sync products to GCP", steps: [
+    { e: [["ecsA","rdsP"]], t: "A product changes", b: "The store owner edits a product's description and price. The catalog service writes the change to Postgres." },
+    { e: [["ecsA","eb"]], t: "Publish the change", b: "In the same request it publishes a ProductUpdated event to EventBridge with the product ID." },
+    { e: [["eb","lWorkers"]], t: "Pick it up", b: "An EventBridge rule invokes the sync worker Lambda, with retries if anything fails." },
+    { e: [["lWorkers","rdsP"]], t: "Read the current text", b: "The worker reads the product's title, description, category, price and stock from Postgres. AWS stays the source of truth." },
+    { e: [["lWorkers","wif"],["lWorkers","run"]], t: "Send it across", b: "It gets a Google token through federation and posts the product to Cloud Run's /index route over HTTPS. Only text and a few fields cross the boundary, a few kilobytes per product." },
+    { e: [["run","embed"],["run","vsearch"]], t: "Re-embed and upsert", b: "Cloud Run embeds the new text and upserts the vector into Vector Search with streaming updates. The change is searchable within seconds." },
+    { e: [["lWorkers","gcs"]], t: "Nightly full rebuild", b: "Once a night the worker also exports the whole catalog to Cloud Storage, and the index is rebuilt from it. That fixes any update that was missed." }
+  ]},
+  { id: "pipeline", key: "E", name: "Data and recommendations", steps: [
+    { e: [["user","apigw"],["apigw","eb"]], t: "Capture clicks", b: "The storefront batches events like product_viewed, searched and added_to_cart and posts them to API Gateway, which writes them straight to EventBridge." },
+    { e: [["eb","firehose"],["firehose","s3lake"]], t: "Land them on AWS", b: "Firehose buffers events, converts them to Parquet and writes date-partitioned files to the S3 lake." },
+    { e: [["s3lake","sts"],["sts","gcs"]], t: "Copy to Google Cloud", b: "Each night Storage Transfer Service assumes an AWS IAM role that trusts Google, and copies only the new files to Cloud Storage. Parquet keeps the transfer, and the AWS egress bill, small." },
+    { e: [["bq","gcs"]], t: "Load and baseline", b: "BigQuery loads the new files. SQL counts which products are bought together: the baseline the model has to beat." },
+    { e: [["vtrain","bq"]], t: "Train the model", b: "A weekly Vertex AI custom training job learns item-to-item similarity from purchase history and is scored offline against the SQL baseline." },
+    { e: [["vtrain","gcs"]], t: "Run batch inference", b: "The job scores every product and writes its top 10 recommendations to a file in Cloud Storage. No endpoint runs between jobs." },
+    { e: [["lWorkers","wif"],["lWorkers","gcs"],["lWorkers","ddb"]], t: "Bring results home", b: "A scheduled worker Lambda signs in through federation, downloads the file and writes the lists to DynamoDB. Product pages read them locally in milliseconds." }
+  ]},
+  { id: "failover", key: "F", name: "Failure drills", steps: [
+    { e: [], n: ["ecsA","rdsP","nat"], t: "AZ a goes down", b: "Phase 5 drill: simulate an Availability Zone outage with AWS Fault Injection Service. The catalog task, the database primary and the NAT in AZ a stop responding." },
+    { e: [["alb","ecsB"]], t: "The load balancer reroutes", b: "ALB health checks fail for the AZ a task within about 30 seconds, and all traffic shifts to the task in AZ b." },
+    { e: [["rdsP","rdsS"]], t: "The database fails over", b: "RDS Multi-AZ promotes the standby in AZ b and points the same DNS name at it, usually within one to two minutes." },
+    { e: [["ecsB","cache"],["ecsB","rdsS"]], t: "Service continues", b: "The cache replica in AZ b takes over reads. Autoscaling starts more tasks in AZ b to absorb the full load." },
+    { e: [], n: ["run","vsearch","gemini"], t: "Google Cloud goes dark", b: "Second drill: block outbound calls to Google Cloud. The catalog service times out after 800 ms and switches to keyword search in Postgres. The assistant shows \"temporarily unavailable\". Browsing and checkout are unaffected." },
+    { e: [["apigw","lOrders"]], t: "Checkout never noticed", b: "API Gateway, Lambda, DynamoDB and the event pipeline run across AZs by design and never call Google Cloud, so orders keep flowing through both drills." }
+  ]},
+  { id: "deploy", key: "G", name: "Deploy a change", steps: [
+    { e: [["github","iam"]], t: "Open a pull request", b: "GitHub Actions runs unit tests and one terraform plan covering both the aws and google providers, signing in to AWS through OIDC. The plan is posted to the PR for review." },
+    { e: [["github","wif"]], t: "Sign in to Google Cloud too", b: "The same workflow signs in to Google Cloud through a GitHub provider in the workload identity pool. Two clouds, still no stored keys." },
+    { e: [["github","ecr"],["ecr","ecsA"],["ecr","ecsB"]], t: "Roll out on AWS", b: "On merge, the catalog image is built for ARM, pushed to ECR and rolled out to ECS. New tasks must pass health checks before old ones drain." },
+    { e: [["github","run"]], t: "Roll out on Google Cloud", b: "The AI service image goes to Artifact Registry and Cloud Run deploys a new revision. Traffic moves only once the revision is healthy." },
+    { e: [["ecsA","cw"],["run","gmon"]], t: "Watch both sides", b: "CloudWatch and Cloud Monitoring alarms on error rate and latency gate the next deploy, and a budget alert watches each bill." }
+  ]}
+];
+
+/* ---------- Diagram ---------- */
+const svgNS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("diagram");
+const W = 136, H = 46;
+function el(tag, attrs, parent) {
+  const e = document.createElementNS(svgNS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(e);
+  return e;
+}
+const defs = el("defs", {}, svg);
+[["arrow", "var(--rule)"], ["arrowFlow", "var(--ink-2)"], ["arrowActive", "var(--amber)"]].forEach(([id, c]) => {
+  const m = el("marker", { id, viewBox: "0 0 10 10", refX: 9, refY: 5, markerWidth: 7, markerHeight: 7, orient: "auto-start-reverse" }, defs);
+  el("path", { d: "M0,0 L10,5 L0,10 z", style: `fill:${c}` }, m);
+});
+
+const zones = el("g", {}, svg);
+function zone(x, y, w, h, label, cls) {
+  const g = el("g", { class: "zone " + (cls || "") }, zones);
+  el("rect", { x, y, width: w, height: h, rx: 10 }, g);
+  el("text", { x: x + 12, y: y + 18 }, g).textContent = label;
+}
+zone(20, 40, 130, 400, "Users");
+zone(176, 40, 158, 400, "AWS · Edge");
+zone(356, 40, 410, 400, "AWS · VPC", "vpc");
+zone(780, 40, 480, 400, "AWS · Serverless, events, data");
+zone(20, 492, 1240, 196, "Google Cloud · us-east4 · AI layer", "gcp");
+zone(20, 730, 1240, 120, "AWS · Security, delivery and operations");
+// cloud boundary
+const bnd = el("g", { class: "boundary" }, zones);
+el("line", { x1: 20, y1: 466, x2: 1260, y2: 466 }, bnd);
+el("text", { x: 640, y: 482, "text-anchor": "middle" }, bnd).textContent = "Cloud boundary · HTTPS only · Google tokens from Workload Identity Federation · no stored keys";
+// subnets and AZs
+const sub = el("g", { class: "subnet" }, zones);
+[[70, "public subnets"], [168, "private app subnets"], [262, "private data subnets"]].forEach(([y, t], i) => {
+  el("rect", { x: 372, y, width: 378, height: i === 2 ? 166 : 76, rx: 6 }, sub);
+  el("text", { x: 380, y: y + 12 }, sub).textContent = t;
+});
+const az = el("g", { class: "az" }, zones);
+el("line", { x1: 565, y1: 62, x2: 565, y2: 432 }, az);
+el("text", { x: 556, y: 58, "text-anchor": "end" }, az).textContent = "AZ a";
+el("text", { x: 574, y: 58 }, az).textContent = "AZ b";
+
+const edgeLayer = el("g", {}, svg);
+const pulseLayer = el("g", {}, svg);
+const nodeLayer = el("g", {}, svg);
+
+function anchor(n, tx, ty) {
+  const dx = tx - n.x, dy = ty - n.y;
+  if (!dx && !dy) return [n.x, n.y];
+  const s = Math.min((W / 2 + 3) / Math.abs(dx || 1e-9), (H / 2 + 3) / Math.abs(dy || 1e-9));
+  return [n.x + dx * s, n.y + dy * s];
+}
+function edgePath(a, b) {
+  const A = byId[a], B = byId[b];
+  const [x1, y1] = anchor(A, B.x, B.y), [x2, y2] = anchor(B, A.x, A.y);
+  const mx = (x1 + x2) / 2, my = (y1 + y2) / 2, dx = x2 - x1, dy = y2 - y1;
+  const len = Math.hypot(dx, dy) || 1, bend = Math.min(40, len * 0.12);
+  const cx = mx - dy / len * bend, cy = my + dx / len * bend;
+  return `M${x1.toFixed(1)},${y1.toFixed(1)} Q${cx.toFixed(1)},${cy.toFixed(1)} ${x2.toFixed(1)},${y2.toFixed(1)}`;
+}
+const EDGES = {};
+FLOWS.forEach(f => f.steps.forEach(s => s.e.forEach(([a, b]) => {
+  const k = a + ">" + b;
+  if (!EDGES[k]) EDGES[k] = el("path", { d: edgePath(a, b), class: "edge", "marker-end": "url(#arrow)", "data-a": a, "data-b": b }, edgeLayer);
+})));
+
+const NODES = {};
+N.forEach(n => {
+  const g = el("g", { class: "node" + (n.later ? " later" : ""), tabindex: 0, role: "button", "aria-label": `${n.label}, ${n.sub}`, transform: `translate(${n.x - W / 2},${n.y - H / 2})` }, nodeLayer);
+  el("rect", { class: "box", width: W, height: H, rx: 7 }, g);
+  el("rect", { x: 0, y: 8, width: 4, height: H - 16, rx: 2, style: `fill:var(${CAT[n.cat].v})` }, g);
+  el("text", { class: "lbl", x: 12, y: 20 }, g).textContent = n.label;
+  el("text", { class: "sub", x: 12, y: 35 }, g).textContent = n.sub;
+  g.addEventListener("click", () => selectNode(n.id, true));
+  g.addEventListener("keydown", ev => { if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); selectNode(n.id, true); } });
+  NODES[n.id] = g;
+});
+
+document.getElementById("legend").innerHTML =
+  Object.entries(CAT).filter(([k]) => k !== "client").map(([, c]) => `<span><i style="background:var(${c.v})"></i>${c.name}</span>`).join("") +
+  `<span><i class="dash"></i>Cloud boundary</span><span><i style="background:var(--amber)"></i>Current step</span>`;
+
+/* ---------- State ---------- */
+let flow = FLOWS[0], step = 0, phase = 9, selected = "cf", timer = null, pulses = [];
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const flowsEl = document.getElementById("flows");
+FLOWS.forEach(f => {
+  const b = document.createElement("button");
+  b.type = "button"; b.id = "flow-" + f.id;
+  b.innerHTML = `<span class="k">${f.key}</span>${f.name}`;
+  b.addEventListener("click", () => setFlow(f.id, true));
+  flowsEl.appendChild(b);
+});
+
+function setFlow(id, fromUser) {
+  stop();
+  flow = FLOWS.find(f => f.id === id) || FLOWS[0];
+  step = 0;
+  if (fromUser) { try { history.replaceState(null, "", "#" + flow.id); } catch (e) {} }
+  render();
+  const first = stepNodes(flow.steps[0]);
+  selectNode(first[first.length - 1], false);
+}
+function stepNodes(s) {
+  const ids = s.n ? [...s.n] : [];
+  s.e.forEach(([a, b]) => { if (!ids.includes(a)) ids.push(a); if (!ids.includes(b)) ids.push(b); });
+  return ids;
+}
+function render() {
+  flowsEl.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", b.id === "flow-" + flow.id));
+  const s = flow.steps[step];
+  document.getElementById("flowName").textContent = `Flow ${flow.key} · ${flow.name}`;
+  document.getElementById("stepCount").textContent = `Step ${step + 1} of ${flow.steps.length}`;
+  document.getElementById("stepTitle").textContent = s.t;
+  document.getElementById("stepBody").textContent = s.b;
+  document.getElementById("prev").disabled = step === 0;
+  document.getElementById("next").textContent = step === flow.steps.length - 1 ? "Restart" : "Next";
+  document.getElementById("play").textContent = timer ? "Pause" : "Play";
+  const dots = document.getElementById("dots");
+  dots.innerHTML = "";
+  flow.steps.forEach((st, i) => {
+    const d = document.createElement("button");
+    d.type = "button"; d.className = i === step ? "on" : i < step ? "done" : "";
+    d.setAttribute("aria-label", `Step ${i + 1}: ${st.t}`);
+    d.addEventListener("click", () => { stop(); goto(i); });
+    dots.appendChild(d);
+  });
+
+  const flowEdges = new Set(), flowNodes = new Set();
+  flow.steps.forEach(st => { st.e.forEach(([a, b]) => flowEdges.add(a + ">" + b)); stepNodes(st).forEach(n => flowNodes.add(n)); });
+  const actEdges = new Set(s.e.map(([a, b]) => a + ">" + b)), actNodes = new Set(stepNodes(s));
+
+  N.forEach(n => {
+    const g = NODES[n.id];
+    g.classList.toggle("dim", n.phase > phase);
+    g.classList.toggle("inflow", flowNodes.has(n.id));
+    g.classList.toggle("active", actNodes.has(n.id));
+    g.classList.toggle("selected", selected === n.id);
+  });
+  Object.entries(EDGES).forEach(([k, p]) => {
+    const a = p.dataset.a, b = p.dataset.b;
+    const hidden = byId[a].phase > phase || byId[b].phase > phase;
+    const act = actEdges.has(k), inf = flowEdges.has(k);
+    p.setAttribute("class", "edge" + (act ? " active" : inf ? " inflow" : "") + (hidden ? " dim" : ""));
+    p.setAttribute("marker-end", act ? "url(#arrowActive)" : inf ? "url(#arrowFlow)" : "url(#arrow)");
+    if (act) edgeLayer.appendChild(p);
+  });
+  startPulses(s);
+}
+function startPulses(s) {
+  pulses.forEach(p => p.remove()); pulses = [];
+  if (reduce) return;
+  s.e.forEach(([a, b], i) => {
+    const path = EDGES[a + ">" + b];
+    const c = el("circle", { r: 4.5, class: "pulse" }, pulseLayer);
+    pulses.push(c);
+    const L = path.getTotalLength(), dur = 1100, delay = i * 450;
+    const t0 = performance.now();
+    (function tick(now) {
+      if (!c.isConnected) return;
+      const t = ((now - t0 - delay) % (dur + 600)) / dur;
+      if (now - t0 < delay || t > 1) { c.setAttribute("opacity", 0); }
+      else { const pt = path.getPointAtLength(L * t); c.setAttribute("cx", pt.x); c.setAttribute("cy", pt.y); c.setAttribute("opacity", 1); }
+      requestAnimationFrame(tick);
+    })(t0);
+  });
+}
+function goto(i) {
+  step = Math.max(0, Math.min(flow.steps.length - 1, i));
+  render();
+  const ids = stepNodes(flow.steps[step]);
+  selectNode(ids[ids.length - 1], false);
+}
+function stop() { if (timer) { clearInterval(timer); timer = null; } }
+document.getElementById("prev").addEventListener("click", () => { stop(); goto(step - 1); });
+document.getElementById("next").addEventListener("click", () => { stop(); goto(step === flow.steps.length - 1 ? 0 : step + 1); });
+document.getElementById("play").addEventListener("click", () => {
+  if (timer) { stop(); render(); return; }
+  if (step === flow.steps.length - 1) goto(0);
+  timer = setInterval(() => {
+    if (step >= flow.steps.length - 1) { stop(); render(); return; }
+    goto(step + 1);
+  }, 3800);
+  render();
+});
+
+function selectNode(id, fromUser) {
+  selected = id;
+  const n = byId[id];
+  Object.entries(NODES).forEach(([k, g]) => g.classList.toggle("selected", k === id));
+  const comp = document.getElementById("comp");
+  const ph = n.phase > 1 ? `Phase ${n.phase} · ${PHASES[n.phase]}` : "";
+  let modHtml = "";
+  if (n.mod) {
+    modHtml = n.mod.n.split(/,\s*/).map(m => `<span class="tag ${n.mod.s}">${m}</span>`).join("") +
+      `<span class="tag">${n.mod.s === "have" ? "in tfmodules" : "module to add"}</span>`;
+  } else modHtml = `<span class="tag">no AWS resource</span>`;
+  comp.innerHTML = `
+    <span class="eyebrow">Component</span>
+    <div class="comp-title"><span class="swatch" style="background:var(${CAT[n.cat].v})"></span><h3>${n.label}</h3></div>
+    <div class="comp-svc">${n.svc}${ph ? " · " + ph : ""}</div>
+    <dl class="kv">
+      <div><dt>What it does</dt><dd>${n.what}</dd></div>
+      <div><dt>Why this choice</dt><dd>${n.why}</dd></div>
+      ${n.alt ? `<div><dt>Alternatives considered</dt><dd>${n.alt}</dd></div>` : ""}
+      ${n.learn ? `<div><dt>AI fundamentals it teaches</dt><dd>${n.learn}</dd></div>` : ""}
+      <div><dt>Cost</dt><dd>${n.cost}</dd></div>
+      <div><dt>Terraform</dt><dd class="tags">${modHtml}</dd></div>
+    </dl>
+    <p class="hint">Click any box in the diagram to inspect it.</p>`;
+  if (fromUser && window.innerWidth <= 1100) comp.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest" });
+}
+
+const phaseInput = document.getElementById("phase");
+phaseInput.addEventListener("input", () => {
+  phase = +phaseInput.value;
+  document.getElementById("phaseName").textContent = `Phase ${phase} · ${PHASES[phase]}`;
+  render();
+});
+
+window.addEventListener("hashchange", () => { const id = location.hash.slice(1); if (FLOWS.some(f => f.id === id)) setFlow(id, false); });
+const initial = location.hash.slice(1);
+setFlow(FLOWS.some(f => f.id === initial) ? initial : "browse", false);
+selectNode(FLOWS.some(f => f.id === initial) ? selected : "cf", false);
+
+/* ---------- Reference sections ---------- */
+const ROADMAP = [
+  { p: 1, name: "Design", build: "This page: hybrid architecture, flows, decisions, cost model and module gap list.", learn: "Well-Architected trade-offs, multi-AZ and multi-cloud design, costing before building.", cost: "$0", down: "Nothing to tear down." },
+  { p: 2, name: "Core app (AWS)", build: "VPC across 2 AZs, NAT, ALB, ECS Fargate catalog service, RDS PostgreSQL, S3 + CloudFront storefront, ECR, GitHub Actions with OIDC, $20 budget.", learn: "3-tier networking, security groups, containers, CDN origins, IaC pipelines.", cost: "≈ $65 / month", down: "terraform destroy on the app and network stacks; RDS uses skip_final_snapshot in dev and the catalog is reseeded by script." },
+  { p: 3, name: "API and events (AWS)", build: "Cognito, API Gateway, cart and orders Lambdas, DynamoDB, Step Functions checkout, EventBridge, SQS with DLQ, SNS.", learn: "Serverless APIs, JWT auth, sagas, idempotency, event-driven decoupling.", cost: "≈ $1 / month", down: "Pay-per-request, so it can stay up." },
+  { p: 4, name: "Secure (AWS)", build: "WAF on CloudFront, KMS keys, Secrets Manager with rotation, GuardDuty, CloudTrail, least-privilege IAM review.", learn: "Defence in depth, encryption, secrets hygiene, threat detection.", cost: "≈ $15 / month", down: "WAF goes with the edge stack. KMS keys enter a 7-day deletion window. Disable GuardDuty after the trial." },
+  { p: 5, name: "HA and scale (AWS)", build: "RDS Multi-AZ, second NAT, ElastiCache with replica, ECS autoscaling, Route 53 health checks, k6 load test, AZ failure drill.", learn: "Failover, caching, autoscaling, proving HA with a drill.", cost: "≈ +$60 / month", down: "Run the drill and load test, record results, then destroy the same day." },
+  { p: 6, name: "GCP foundation and search", build: "GCP project and budget, Workload Identity Federation trusting the AWS roles, Cloud Run AI service, Vertex AI embeddings, Vector Search, product sync from AWS, semantic search with keyword fallback.", learn: "GCP basics, keyless cross-cloud identity, embeddings, vector search, one Terraform config with two providers.", cost: "≈ $70 / month (Vector Search endpoint)", down: "Undeploy the Vector Search index after every lab. Cloud Run scales to zero and can stay." },
+  { p: 7, name: "Shopping assistant on Gemini", build: "AI proxy Lambda, /assist route with hand-written RAG, Gemini with system instructions and safety settings, an evaluation set of 30 questions.", learn: "Prompting, grounding, hallucination, token cost, evaluating answers.", cost: "Cents per lab", down: "No standing cost beyond phase 6." },
+  { p: 8, name: "Data and recommendations", build: "Clickstream to EventBridge, Firehose, S3 lake, Storage Transfer to Cloud Storage, BigQuery baseline, Vertex AI training and batch recommendations copied back to DynamoDB.", learn: "Cross-cloud data movement and egress, training versus inference, baselines and evaluation.", cost: "≈ $3 per lab", down: "Pause the transfer job; delete BigQuery tables and buckets with force_destroy in dev." },
+  { p: 9, name: "Operate", build: "CloudWatch and Cloud Monitoring dashboards with AI metrics, X-Ray, cross-cloud latency alarms, runbooks, a two-cloud cost report, final README.", learn: "Observability across clouds, AI ops, FinOps.", cost: "≈ $5 / month", down: "Final teardown of every stack except the AWS and GCP foundations." }
+];
+document.querySelector("#phaseTable tbody").innerHTML = ROADMAP.map(r => `
+  <tr><td><span class="ph">${r.p}</span><br><b>${r.name}</b></td>
+  <td>${r.build}</td><td>${r.learn}</td><td class="num">${r.cost}</td><td>${r.down}</td></tr>`).join("");
+
+const TRADEOFFS = [
+  { h: "Latency", v: "a few ms per hop", b: "us-east-1 and us-east4 are both in northern Virginia, so the network hop is small. The real costs are the token exchange (cached for an hour) and Cloud Run cold starts (one to three seconds after idle). Search results are cached in ElastiCache to avoid repeat trips." },
+  { h: "Egress", v: "≈ $0.09 / GB leaving AWS", b: "Every byte that leaves a cloud is billed. The design sends only small payloads across: query text, product text, IDs and scores. The nightly lake copy is Parquet and incremental. At demo scale this stays inside AWS's 100 GB free monthly egress." },
+  { h: "Two bills", v: "two budgets, two consoles", b: "Each cloud gets its own $20 budget alert, and the phase 9 cost report adds them together. Google's $300 trial credit for new accounts covers the AI layer for its first 90 days." },
+  { h: "Two failure domains", v: "graceful degradation", b: "If Google Cloud is unreachable, search falls back to keyword SQL and the assistant says it is unavailable. Checkout never calls Google Cloud, so revenue is never at risk from the AI layer." },
+  { h: "Two IAM models", v: "one direction of trust", b: "AWS roles call Google, never the reverse, except Storage Transfer, which assumes one read-only AWS role. Fewer trust paths are easier to audit and explain in an interview." },
+  { h: "Why bother", v: "multi-cloud on your CV", b: "Many companies run AWS for the core and Google for AI and data. Showing you can wire them together safely is rarer than either cloud on its own." }
+];
+document.getElementById("tradeCards").innerHTML = TRADEOFFS.map(c => `<div class="decision"><h3>${c.h}</h3><span class="pick">${c.v}</span><p>${c.b}</p></div>`).join("");
+
+const COSTS = [
+  { h: "NAT Gateway (AWS)", v: "≈ $33 / month each", b: "Bills every hour even with zero traffic. Dev uses one; S3 and DynamoDB traffic goes through free gateway endpoints instead." },
+  { h: "Vector Search endpoint (GCP)", v: "≈ $65 to $75 / month", b: "The one Google Cloud item that bills by the hour. Deploy the index for a lab and undeploy it after. BigQuery vector search or pgvector are cheaper fallbacks." },
+  { h: "RDS and ElastiCache (AWS)", v: "≈ $12 / month per node", b: "Multi-AZ doubles both. Destroy after each session and reseed the catalog from a script." },
+  { h: "Application Load Balancer (AWS)", v: "≈ $16 / month", b: "Small but constant. Lives in the app stack so it goes away with it." },
+  { h: "Everything if left on", v: "≈ $220 to $240 / month", b: "About $7 to $8 a day across both clouds with every phase running. A four-hour lab session costs about $1.50." },
+  { h: "Guardrails on spend", v: "$20 budget per cloud", b: "AWS Budgets and Google Cloud billing budgets alert at 50, 80 and 100 percent, plus a teardown checklist in every phase's README." }
+];
+document.getElementById("costCards").innerHTML = COSTS.map(c => `<div class="decision"><h3>${c.h}</h3><span class="pick">${c.v}</span><p>${c.b}</p></div>`).join("");
+
+const DECISIONS = [
+  { h: "AI layer on Google Cloud", pick: "Chosen over waiting for Bedrock", b: "The AWS Bedrock quota request has had no answer. Gemini on Vertex AI works on a new account today, and a hybrid design adds GCP experience to the portfolio." },
+  { h: "Workload Identity Federation", pick: "Chosen over service-account keys", b: "AWS roles prove who they are with their own credentials and get a Google token that lasts an hour. There is nothing to leak, rotate or store." },
+  { h: "One Terraform config, two providers", pick: "aws + google in the same stack", b: "The ai stack declares both providers. The Google identity pool reads AWS role ARNs from AWS resources, and the Lambda reads the pool's audience from Google resources, all in one plan with no copy-pasted IDs." },
+  { h: "ECS Fargate for the web tier", pick: "Chosen over EKS and EC2 Auto Scaling", b: "Same container skills as Kubernetes without the $73 a month control plane or node patching. EKS modules already exist in tfmodules, so an EKS variant is a stretch goal." },
+  { h: "Vertex AI Vector Search", pick: "Chosen over pgvector in RDS", b: "Managed approximate nearest neighbour search with streaming updates. It costs more to leave running, so it is undeployed between labs, and pgvector remains the documented fallback." },
+  { h: "Recommendations computed on GCP, served from AWS", pick: "Batch, copied back nightly", b: "Training and scoring happen on Google Cloud; results are copied into DynamoDB. Product pages never wait on a cross-cloud call, and nothing runs between jobs." }
+];
+document.getElementById("decisionCards").innerHTML = DECISIONS.map(d => `<div class="decision"><h3>${d.h}</h3><span class="pick">${d.pick}</span><p>${d.b}</p></div>`).join("");
+
+const MODS = [
+  { h: "Already in tfmodules", s: "have", items: ["vpc, subnet, internet-gateway, nat-gateway", "route-table, route, route-table-association", "security-group, ec2", "ecr-repository, eks-cluster, eks-node-group", "lambda-function, lambda-permission", "apigatewayv2-api, -route, -integration, -authorizer, -stage", "cognito-user-pool, cognito-user-pool-client", "dynamodb-table, s3-bucket", "cloudwatch-log-group, cloudwatch-metric-alarm", "iam-role, iam-github-oidc, budget"] },
+  { h: "AWS modules to add", s: "gap", items: ["route53, acm, cloudfront, alb, ecs, rds (phase 2)", "step-functions, eventbridge, sqs, sns (phase 3)", "wafv2, kms, secrets-manager, guardduty, cloudtrail (phase 4)", "elasticache (phase 5)", "firehose (phase 8), xray (phase 9)"] },
+  { h: "Google Cloud modules to add (none exist yet)", s: "gap", items: ["project-services, billing-budget (phase 6)", "workload-identity-pool (AWS + GitHub providers), service-account", "cloud-run-service, artifact-registry", "vertex-vector-search (index + endpoint)", "storage-bucket, storage-transfer-job, bigquery-dataset (phase 8)", "monitoring-alert-policy (phase 9)"] }
+];
+document.getElementById("modCards").innerHTML = MODS.map(m => `<div class="card"><h3>${m.h}<span class="tag ${m.s}">${m.s === "have" ? "ready" : "new"}</span></h3><ul>${m.items.map(i => `<li><code>${i}</code></li>`).join("")}</ul></div>`).join("");
+</script>
+</body>
+</html>
