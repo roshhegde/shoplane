@@ -1,0 +1,25 @@
+# Run the catalog and Postgres on your laptop:  docker compose up --build
+# then open http://localhost:8000/api/products
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: shoplane
+      POSTGRES_USER: shoplane
+      POSTGRES_PASSWORD: local-only
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "shoplane"]
+      interval: 2s
+      retries: 15
+  catalog:
+    build: .
+    environment:
+      DB_HOST: db
+      DB_USER: shoplane
+      DB_PASSWORD: local-only
+      DB_SSLMODE: disable
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy

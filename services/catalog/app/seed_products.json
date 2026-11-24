@@ -1,0 +1,18 @@
+[
+  {"sku": "KIT-001", "name": "Pour-over coffee set", "description": "Ceramic dripper, glass carafe and 100 paper filters for slow morning coffee.", "category": "Kitchen", "price_cents": 3800, "stock": 24, "image": "☕"},
+  {"sku": "KIT-002", "name": "Cast iron skillet 26 cm", "description": "Pre-seasoned cast iron pan that goes from stovetop to oven.", "category": "Kitchen", "price_cents": 4500, "stock": 12, "image": "🍳"},
+  {"sku": "KIT-003", "name": "Bamboo cutting board", "description": "Large reversible board with a juice groove, made from sustainable bamboo.", "category": "Kitchen", "price_cents": 2200, "stock": 40, "image": "🥖"},
+  {"sku": "KIT-004", "name": "Loose-leaf tea sampler", "description": "Six organic teas: green, oolong, black, rooibos, chamomile and mint.", "category": "Kitchen", "price_cents": 1900, "stock": 0, "image": "🍵"},
+  {"sku": "OUT-001", "name": "Ultralight daypack 20 L", "description": "Water-resistant hiking backpack with a padded laptop sleeve.", "category": "Outdoors", "price_cents": 6900, "stock": 15, "image": "🎒"},
+  {"sku": "OUT-002", "name": "Insulated water bottle", "description": "Stainless steel bottle that keeps drinks cold for 24 hours or hot for 12.", "category": "Outdoors", "price_cents": 2900, "stock": 60, "image": "🧴"},
+  {"sku": "OUT-003", "name": "Two-person camping tent", "description": "Freestanding three-season tent that pitches in five minutes.", "category": "Outdoors", "price_cents": 18900, "stock": 6, "image": "⛺"},
+  {"sku": "OUT-004", "name": "Rechargeable headlamp", "description": "400 lumen USB-C headlamp with red night mode.", "category": "Outdoors", "price_cents": 3400, "stock": 30, "image": "🔦"},
+  {"sku": "TEC-001", "name": "Wireless earbuds", "description": "Noise-cancelling earbuds with 30 hours of battery including the case.", "category": "Tech", "price_cents": 8900, "stock": 18, "image": "🎧"},
+  {"sku": "TEC-002", "name": "Mechanical keyboard", "description": "Compact 75% keyboard with hot-swappable switches and a USB-C cable.", "category": "Tech", "price_cents": 11900, "stock": 9, "image": "⌨️"},
+  {"sku": "TEC-003", "name": "Portable charger 10,000 mAh", "description": "Slim power bank that charges a phone about twice.", "category": "Tech", "price_cents": 3200, "stock": 45, "image": "🔋"},
+  {"sku": "TEC-004", "name": "Smart desk lamp", "description": "Dimmable LED lamp with adjustable colour temperature and a wireless charging base.", "category": "Tech", "price_cents": 5400, "stock": 0, "image": "💡"},
+  {"sku": "HOM-001", "name": "Linen throw blanket", "description": "Stonewashed linen blanket that gets softer with every wash.", "category": "Home", "price_cents": 7400, "stock": 11, "image": "🛋️"},
+  {"sku": "HOM-002", "name": "Soy wax candle", "description": "Hand-poured candle with cedar and sea salt notes, 50 hours of burn time.", "category": "Home", "price_cents": 2400, "stock": 33, "image": "🕯️"},
+  {"sku": "HOM-003", "name": "Indoor plant kit", "description": "Snake plant in a ceramic pot with a drainage saucer. Hard to kill.", "category": "Home", "price_cents": 3900, "stock": 14, "image": "🪴"},
+  {"sku": "HOM-004", "name": "Wall clock", "description": "Silent sweep clock with an oak frame, 30 cm across.", "category": "Home", "price_cents": 4200, "stock": 8, "image": "🕰️"}
+]

@@ -1,0 +1,32 @@
+# Builds the catalog image for arm64 (Graviton nodes) and pushes it to ECR,
+# tagged with the commit SHA. Signs in to AWS with OIDC: no stored keys.
+name: catalog-image
+
+on:
+  push:
+    branches: [main]
+    paths: ["services/catalog/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write # lets the job request a GitHub OIDC token for AWS
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm # native arm64 runner, no emulation needed
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Build and push
+        env:
+          IMAGE: ${{ steps.ecr.outputs.registry }}/shoplane/catalog:${{ github.sha }}
+        run: |
+          docker build --platform linux/arm64 -t "$IMAGE" services/catalog
+          docker push "$IMAGE"
+          echo "Pushed \`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"

@@ -13,12 +13,23 @@ An AI-assisted e-commerce store built one production upgrade at a time, as a han
 
 The page source is [`docs/index.html`](docs/index.html), and the written design is in [`docs/DESIGN.md`](docs/DESIGN.md).
 
+## Repository layout
+
+| Path | What it is |
+| --- | --- |
+| `infra/aws-foundation`, `infra/network`, `infra/app`, `infra/edge` | Terraform stacks, each with its own state |
+| `services/catalog` | FastAPI catalog service, its tests and Dockerfile |
+| `k8s/catalog.yaml` | Deployment, Service, PodDisruptionBudget and Ingress for the catalog |
+| `storefront` | Static storefront served from S3 through CloudFront |
+| `scripts` | `lab-up.sh`, `lab-down.sh` and `deploy-catalog.sh` |
+| `.github/workflows` | CI, image build and the build-demo-destroy lab workflow |
+
 ## Build phases
 
 | Phase | Focus | Status |
 | --- | --- | --- |
 | 1 | Design: architecture, flows, costs, module gaps | Done |
-| 2 | Core app on AWS: VPC, EKS, ALB, RDS, S3 + CloudFront, CI/CD | Planned |
+| 2 | Core app on AWS: VPC, EKS, ALB, RDS, S3 + CloudFront, CI/CD | Built ([how it works and how to run it](docs/phase-2-core-store.md)) |
 | 3 | API and events: Cognito, API Gateway, Lambda, DynamoDB, Step Functions, EventBridge, SQS, SNS | Planned |
 | 4 | Secure: WAF, KMS, Secrets Manager, GuardDuty, CloudTrail | Planned |
 | 5 | HA and scale: Multi-AZ RDS, ElastiCache, autoscaling, failure drill | Planned |

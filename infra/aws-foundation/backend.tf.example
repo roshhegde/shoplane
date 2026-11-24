@@ -1,0 +1,11 @@
+# Step 2 of the bootstrap. The first apply keeps state on your laptop, because
+# the bucket that will hold it doesn't exist yet. After that apply:
+#   cp backend.tf.example backend.tf
+#   terraform init -migrate-state -backend-config=../backend.hcl
+# and Terraform copies its own state into the bucket it just created.
+terraform {
+  backend "s3" {
+    key          = "shoplane/aws-foundation.tfstate"
+    use_lockfile = true
+  }
+}

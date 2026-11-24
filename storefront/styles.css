@@ -1,0 +1,34 @@
+:root {
+  --bg: #f6f7f5; --surface: #ffffff; --text: #1d2321; --muted: #5d6965;
+  --line: #e1e6e4; --accent: #e8743b; --accent-text: #ffffff; --chip: #eef1ef;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #121615; --surface: #1b211f; --text: #e9eeec; --muted: #9db0ac;
+    --line: #2b3431; --accent: #f08a46; --accent-text: #121615; --chip: #242c29;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+.top { background: var(--surface); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 1; }
+.bar { display: flex; gap: 16px; align-items: center; justify-content: space-between; padding-top: 12px; padding-bottom: 12px; flex-wrap: wrap; }
+.brand { font-weight: 700; font-size: 1.25rem; color: var(--text); text-decoration: none; }
+.brand::before { content: "◆ "; color: var(--accent); }
+.search { display: flex; gap: 8px; flex: 1 1 220px; max-width: 420px; min-width: 0; }
+.search input { flex: 1; min-width: 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--text); font: inherit; }
+button { padding: 8px 14px; border: 0; border-radius: 8px; background: var(--accent); color: var(--accent-text); font: inherit; font-weight: 600; cursor: pointer; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 8px; }
+.chip { background: var(--chip); color: var(--text); font-weight: 500; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+.status { color: var(--muted); min-height: 1.5em; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; padding-bottom: 32px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 6px; }
+.card .img { font-size: 3rem; text-align: center; background: var(--chip); border-radius: 8px; padding: 16px 0; }
+.card h2 { font-size: 1rem; margin: 6px 0 0; }
+.card p { margin: 0; color: var(--muted); font-size: 0.9rem; flex: 1; }
+.row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+.price { font-weight: 700; }
+.stock { font-size: 0.85rem; color: var(--muted); }
+.stock.out { color: #c2410c; }
+.foot { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 16px; padding-bottom: 24px; }
