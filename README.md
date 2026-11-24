@@ -18,7 +18,7 @@ The page source is [`docs/index.html`](docs/index.html), and the written design 
 | Phase | Focus | Status |
 | --- | --- | --- |
 | 1 | Design: architecture, flows, costs, module gaps | Done |
-| 2 | Core app on AWS: VPC, ALB, ECS Fargate, RDS, S3 + CloudFront, CI/CD | Planned |
+| 2 | Core app on AWS: VPC, EKS, ALB, RDS, S3 + CloudFront, CI/CD | Planned |
 | 3 | API and events: Cognito, API Gateway, Lambda, DynamoDB, Step Functions, EventBridge, SQS, SNS | Planned |
 | 4 | Secure: WAF, KMS, Secrets Manager, GuardDuty, CloudTrail | Planned |
 | 5 | HA and scale: Multi-AZ RDS, ElastiCache, autoscaling, failure drill | Planned |
@@ -29,7 +29,7 @@ The page source is [`docs/index.html`](docs/index.html), and the written design 
 
 ## Cost and teardown
 
-Nothing here runs all the time. Each phase is built, demonstrated and destroyed in a session. A four-hour lab costs about $1.50 across both clouds, while leaving everything running would cost about $220 to $240 a month. Each phase's notes include its teardown steps, and each cloud has a $20 budget alert.
+Nothing here runs all the time. Each phase is built, demonstrated and destroyed in a session. A four-hour lab costs about $2 across both clouds, while leaving everything running would cost about $310 to $340 a month. Each phase's notes include its teardown steps, and each cloud has a $20 budget alert.
 
 ## License
 

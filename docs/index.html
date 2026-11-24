@@ -172,7 +172,6 @@ footer { margin-top: 56px; padding-top: 16px; border-top: 1px solid var(--rule);
 </style>
 </head>
 <body>
-
 <div class="wrap">
   <header class="top">
     <span class="eyebrow">Phase 1 · Architecture design</span>
@@ -323,23 +322,25 @@ const N = [
 
   { id: "alb", x: 660, y: 105, cat: "compute", phase: 2, label: "Application LB", sub: "spans AZ a + b",
     svc: "Elastic Load Balancing (ALB)",
-    what: "Receives catalog and search traffic from CloudFront and spreads it across healthy Fargate tasks in both AZs. Health checks pull failing tasks out of rotation.",
-    why: "The ALB is what makes the web tier highly available: it lives in two AZs and only sends traffic to tasks that pass health checks. A security group lets in only CloudFront's managed prefix list.",
+    what: "Receives catalog and search traffic from CloudFront and spreads it across healthy catalog pods in both AZs. The AWS Load Balancer Controller running in the cluster creates it from a Kubernetes Ingress and registers pod IPs directly as targets.",
+    why: "The ALB is what makes the web tier highly available: it lives in two AZs and only sends traffic to pods that pass health checks. A security group lets in only CloudFront's managed prefix list.",
     alt: "API Gateway in front of everything: works, but ALB to containers is the classic 3-tier pattern recruiters expect to see.",
     mod: { s: "gap", n: "alb" }, cost: "About $16 a month plus load balancer capacity units" },
 
-  { id: "ecsA", x: 470, y: 205, cat: "compute", phase: 2, label: "Catalog service", sub: "ECS Fargate · AZ a",
-    svc: "Amazon ECS on AWS Fargate (image in ECR)",
+  { id: "ecsA", x: 470, y: 205, cat: "compute", phase: 2, label: "Catalog pods", sub: "EKS node · AZ a",
+    svc: "Amazon EKS (managed node group, image in ECR)",
     what: "A small containerised API (Python FastAPI) for product listing, product pages and search. For a search it asks the AI service on Google Cloud for matching product IDs, then loads those products from Postgres.",
-    why: "Containers on Fargate mean no servers to patch and per-second billing. Two tasks in two AZs is the minimum for HA. If Google Cloud is slow or down, search falls back to a plain SQL keyword search, so the store keeps working.",
-    alt: "EC2 Auto Scaling group: the textbook SAA answer, more to manage. EKS: in demand, but the control plane alone adds about $73 a month.",
-    mod: { s: "gap", n: "ecs (cluster, service, task definition)" }, cost: "About $7 a month per 0.25 vCPU / 0.5 GB ARM task" },
+    why: "Kubernetes is what most job ads ask for, and your tfmodules already have eks-cluster and eks-node-group. A Deployment with a topology spread constraint keeps pods in both AZs. EKS Pod Identity gives the pods their own AWS role, which Google's federation trusts. If Google Cloud is slow or down, search falls back to a plain SQL keyword search.",
+    alt: "ECS Fargate: cheaper to leave running and less to manage, but less in demand. EC2 Auto Scaling group: the textbook SAA answer.",
+    learn: "Kubernetes on AWS: Deployments, Services, Ingress, Pod Identity, probes, HPA, node scaling.",
+    mod: { s: "have", n: "eks-cluster, eks-node-group" }, cost: "Control plane $0.10 an hour (about $73 a month), plus nodes" },
 
-  { id: "ecsB", x: 660, y: 205, cat: "compute", phase: 2, label: "Catalog service", sub: "ECS Fargate · AZ b",
-    svc: "Amazon ECS on AWS Fargate",
-    what: "The second copy of the catalog service, in the other Availability Zone. ECS keeps the desired count running and replaces tasks that fail.",
-    why: "If AZ a has a bad day, this task keeps serving while ECS starts a replacement. Phase 5 adds target-tracking autoscaling on CPU and request count.",
-    mod: { s: "gap", n: "ecs" }, cost: "About $7 a month per task" },
+  { id: "ecsB", x: 660, y: 205, cat: "compute", phase: 2, label: "Catalog pods", sub: "EKS node · AZ b",
+    svc: "Amazon EKS managed node group",
+    what: "The second node of the managed node group, in the other Availability Zone, running more catalog pods. Kubernetes keeps the desired replica count and reschedules pods that fail.",
+    why: "If AZ a has a bad day, these pods keep serving while Kubernetes reschedules the rest. Phase 5 adds a Horizontal Pod Autoscaler for pods and Karpenter or Cluster Autoscaler for nodes.",
+    alt: "Graviton Spot nodes keep the bill down; a PodDisruptionBudget keeps at least one pod up during Spot interruptions.",
+    mod: { s: "have", n: "eks-node-group" }, cost: "About $12 a month per t4g.medium on Spot, about $25 On-Demand" },
 
   { id: "rdsP", x: 470, y: 300, cat: "data", phase: 2, label: "RDS PostgreSQL", sub: "primary · AZ a",
     svc: "Amazon RDS for PostgreSQL",
@@ -432,7 +433,7 @@ const N = [
   /* ---------- Google Cloud ---------- */
   { id: "wif", x: 330, y: 540, cat: "gcp", phase: 6, label: "Identity Federation", sub: "trusts AWS roles",
     svc: "Google Cloud IAM Workload Identity Federation",
-    what: "A workload identity pool with an AWS provider for your account. It accepts a signed AWS GetCallerIdentity request from the Lambda or ECS role and returns a short-lived Google token for one service account (run.invoker and aiplatform.user only). A second provider trusts GitHub Actions for deploys.",
+    what: "A workload identity pool with an AWS provider for your account. It accepts a signed AWS GetCallerIdentity request from the Lambda or EKS Pod Identity role and returns a short-lived Google token for one service account (run.invoker and aiplatform.user only). A second provider trusts GitHub Actions for deploys.",
     why: "No Google service-account key is ever created, stored or rotated. An attribute condition only admits the exact AWS role ARNs you list, so nothing else in the AWS account can call Google Cloud.",
     alt: "A service-account JSON key in Secrets Manager: works, but it is a long-lived secret that can leak. Google recommends against it.",
     learn: "Cross-cloud identity: token exchange, audiences, attribute conditions and service-account impersonation.",
@@ -519,14 +520,14 @@ const N = [
 
   { id: "iam", x: 225, y: 800, cat: "ops", phase: 2, label: "IAM + OIDC", sub: "least privilege",
     svc: "AWS IAM",
-    what: "GitHub signs in through OIDC to a deploy role with short-lived credentials. Each Lambda and ECS task has its own role; only the AI proxy, catalog and worker roles are trusted by Google's identity pool.",
+    what: "GitHub signs in through OIDC to a deploy role with short-lived credentials. Each Lambda and each Kubernetes service account (through EKS Pod Identity) has its own role; only the AI proxy, catalog and worker roles are trusted by Google's identity pool.",
     why: "No long-lived access keys anywhere, and a compromised function can only touch its own resources.",
     mod: { s: "have", n: "iam-role, iam-github-oidc" }, cost: "Free" },
 
   { id: "ecr", x: 365, y: 800, cat: "ops", phase: 2, label: "ECR", sub: "container images",
     svc: "Amazon ECR",
     what: "Stores the catalog service image, scanned on push. Lifecycle rules keep only recent images. The Cloud Run image lives in Google's Artifact Registry.",
-    why: "Private registry next to ECS with IAM-based pulls.",
+    why: "Private registry next to EKS; nodes pull with their IAM role.",
     mod: { s: "have", n: "ecr-repository" }, cost: "$0.10 per GB-month" },
 
   { id: "cw", x: 505, y: 800, cat: "ops", phase: 2, label: "CloudWatch", sub: "logs · metrics · alarms",
@@ -572,9 +573,9 @@ const FLOWS = [
     { e: [["user","r53"]], t: "Find the site", b: "The browser asks Route 53 for shoplane's address. An alias record points it at the nearest CloudFront edge location." },
     { e: [["user","waf"],["waf","cf"]], t: "Enter at the edge", b: "The request reaches a CloudFront edge. WAF checks it against managed rules and the rate limit before anything else runs." },
     { e: [["cf","s3web"]], t: "Load the storefront", b: "HTML, JavaScript and product images come from the private S3 bucket, usually straight from the edge cache." },
-    { e: [["cf","alb"],["alb","ecsA"]], t: "Ask for products", b: "Calls to /api/catalog go to the Application Load Balancer, which picks a healthy Fargate task in either Availability Zone." },
+    { e: [["cf","alb"],["alb","ecsA"]], t: "Ask for products", b: "Calls to /api/catalog go to the Application Load Balancer, which sends it straight to a healthy catalog pod in either Availability Zone." },
     { e: [["ecsA","cache"],["ecsA","rdsP"]], t: "Cache first, then the database", b: "The catalog service checks ElastiCache. On a miss it queries RDS PostgreSQL and caches the result with a short expiry." },
-    { e: [["ecsA","wif"]], t: "Get a Google token", b: "For a search like \"warm jacket for hiking\", the service first exchanges its AWS task-role credentials for a short-lived Google token through Workload Identity Federation. It caches the token for up to an hour." },
+    { e: [["ecsA","wif"]], t: "Get a Google token", b: "For a search like \"warm jacket for hiking\", the service first exchanges the AWS credentials from its Pod Identity role for a short-lived Google token through Workload Identity Federation. It caches the token for up to an hour." },
     { e: [["ecsA","run"]], t: "Cross to Google Cloud", b: "It calls the AI service's /search route on Cloud Run over HTTPS with that token. us-east-1 and us-east4 are both in northern Virginia, so the hop adds only a few milliseconds." },
     { e: [["run","embed"],["run","vsearch"]], t: "Search by meaning", b: "Cloud Run embeds the query with Vertex AI, then asks Vector Search for the nearest products that are in stock. A fleece pullover can match even though it never says \"jacket\"." },
     { e: [["ecsA","rdsP"]], t: "Load the products on AWS", b: "Only product IDs and scores come back across the boundary. The catalog service loads prices and stock from Postgres. If Google Cloud doesn't answer within 800 ms, it falls back to a keyword search." },
@@ -621,17 +622,17 @@ const FLOWS = [
     { e: [["lWorkers","wif"],["lWorkers","gcs"],["lWorkers","ddb"]], t: "Bring results home", b: "A scheduled worker Lambda signs in through federation, downloads the file and writes the lists to DynamoDB. Product pages read them locally in milliseconds." }
   ]},
   { id: "failover", key: "F", name: "Failure drills", steps: [
-    { e: [], n: ["ecsA","rdsP","nat"], t: "AZ a goes down", b: "Phase 5 drill: simulate an Availability Zone outage with AWS Fault Injection Service. The catalog task, the database primary and the NAT in AZ a stop responding." },
-    { e: [["alb","ecsB"]], t: "The load balancer reroutes", b: "ALB health checks fail for the AZ a task within about 30 seconds, and all traffic shifts to the task in AZ b." },
+    { e: [], n: ["ecsA","rdsP","nat"], t: "AZ a goes down", b: "Phase 5 drill: simulate an Availability Zone outage with AWS Fault Injection Service. The node in AZ a, the database primary and the NAT in AZ a stop responding." },
+    { e: [["alb","ecsB"]], t: "The load balancer reroutes", b: "ALB health checks fail for the pods in AZ a within about 30 seconds, and all traffic shifts to the pods in AZ b." },
     { e: [["rdsP","rdsS"]], t: "The database fails over", b: "RDS Multi-AZ promotes the standby in AZ b and points the same DNS name at it, usually within one to two minutes." },
-    { e: [["ecsB","cache"],["ecsB","rdsS"]], t: "Service continues", b: "The cache replica in AZ b takes over reads. Autoscaling starts more tasks in AZ b to absorb the full load." },
+    { e: [["ecsB","cache"],["ecsB","rdsS"]], t: "Service continues", b: "The cache replica in AZ b takes over reads. The Horizontal Pod Autoscaler adds pods in AZ b and the node autoscaler adds a node to hold them." },
     { e: [], n: ["run","vsearch","gemini"], t: "Google Cloud goes dark", b: "Second drill: block outbound calls to Google Cloud. The catalog service times out after 800 ms and switches to keyword search in Postgres. The assistant shows \"temporarily unavailable\". Browsing and checkout are unaffected." },
     { e: [["apigw","lOrders"]], t: "Checkout never noticed", b: "API Gateway, Lambda, DynamoDB and the event pipeline run across AZs by design and never call Google Cloud, so orders keep flowing through both drills." }
   ]},
   { id: "deploy", key: "G", name: "Deploy a change", steps: [
     { e: [["github","iam"]], t: "Open a pull request", b: "GitHub Actions runs unit tests and one terraform plan covering both the aws and google providers, signing in to AWS through OIDC. The plan is posted to the PR for review." },
     { e: [["github","wif"]], t: "Sign in to Google Cloud too", b: "The same workflow signs in to Google Cloud through a GitHub provider in the workload identity pool. Two clouds, still no stored keys." },
-    { e: [["github","ecr"],["ecr","ecsA"],["ecr","ecsB"]], t: "Roll out on AWS", b: "On merge, the catalog image is built for ARM, pushed to ECR and rolled out to ECS. New tasks must pass health checks before old ones drain." },
+    { e: [["github","ecr"],["ecr","ecsA"],["ecr","ecsB"]], t: "Roll out on AWS", b: "On merge, the catalog image is built for ARM, pushed to ECR and rolled out as a Kubernetes rolling update. New pods must pass readiness probes before old ones are removed." },
     { e: [["github","run"]], t: "Roll out on Google Cloud", b: "The AI service image goes to Artifact Registry and Cloud Run deploys a new revision. Traffic moves only once the revision is healthy." },
     { e: [["ecsA","cw"],["run","gmon"]], t: "Watch both sides", b: "CloudWatch and Cloud Monitoring alarms on error rate and latency gate the next deploy, and a budget alert watches each bill." }
   ]}
@@ -867,10 +868,10 @@ selectNode(FLOWS.some(f => f.id === initial) ? selected : "cf", false);
 /* ---------- Reference sections ---------- */
 const ROADMAP = [
   { p: 1, name: "Design", build: "This page: hybrid architecture, flows, decisions, cost model and module gap list.", learn: "Well-Architected trade-offs, multi-AZ and multi-cloud design, costing before building.", cost: "$0", down: "Nothing to tear down." },
-  { p: 2, name: "Core app (AWS)", build: "VPC across 2 AZs, NAT, ALB, ECS Fargate catalog service, RDS PostgreSQL, S3 + CloudFront storefront, ECR, GitHub Actions with OIDC, $20 budget.", learn: "3-tier networking, security groups, containers, CDN origins, IaC pipelines.", cost: "≈ $65 / month", down: "terraform destroy on the app and network stacks; RDS uses skip_final_snapshot in dev and the catalog is reseeded by script." },
+  { p: 2, name: "Core app (AWS)", build: "VPC across 2 AZs, NAT, EKS cluster with a 2-node managed node group, AWS Load Balancer Controller, ALB, catalog Deployment, RDS PostgreSQL, S3 + CloudFront storefront, ECR, GitHub Actions with OIDC, $20 budget.", learn: "3-tier networking, Kubernetes on EKS, Ingress, Pod Identity, CDN origins, IaC pipelines.", cost: "≈ $150 / month", down: "terraform destroy on the app and network stacks; RDS uses skip_final_snapshot in dev and the catalog is reseeded by script." },
   { p: 3, name: "API and events (AWS)", build: "Cognito, API Gateway, cart and orders Lambdas, DynamoDB, Step Functions checkout, EventBridge, SQS with DLQ, SNS.", learn: "Serverless APIs, JWT auth, sagas, idempotency, event-driven decoupling.", cost: "≈ $1 / month", down: "Pay-per-request, so it can stay up." },
   { p: 4, name: "Secure (AWS)", build: "WAF on CloudFront, KMS keys, Secrets Manager with rotation, GuardDuty, CloudTrail, least-privilege IAM review.", learn: "Defence in depth, encryption, secrets hygiene, threat detection.", cost: "≈ $15 / month", down: "WAF goes with the edge stack. KMS keys enter a 7-day deletion window. Disable GuardDuty after the trial." },
-  { p: 5, name: "HA and scale (AWS)", build: "RDS Multi-AZ, second NAT, ElastiCache with replica, ECS autoscaling, Route 53 health checks, k6 load test, AZ failure drill.", learn: "Failover, caching, autoscaling, proving HA with a drill.", cost: "≈ +$60 / month", down: "Run the drill and load test, record results, then destroy the same day." },
+  { p: 5, name: "HA and scale (AWS)", build: "RDS Multi-AZ, second NAT, ElastiCache with replica, HPA and Karpenter autoscaling, Route 53 health checks, k6 load test, AZ failure drill.", learn: "Failover, caching, autoscaling, proving HA with a drill.", cost: "≈ +$60 / month", down: "Run the drill and load test, record results, then destroy the same day." },
   { p: 6, name: "GCP foundation and search", build: "GCP project and budget, Workload Identity Federation trusting the AWS roles, Cloud Run AI service, Vertex AI embeddings, Vector Search, product sync from AWS, semantic search with keyword fallback.", learn: "GCP basics, keyless cross-cloud identity, embeddings, vector search, one Terraform config with two providers.", cost: "≈ $70 / month (Vector Search endpoint)", down: "Undeploy the Vector Search index after every lab. Cloud Run scales to zero and can stay." },
   { p: 7, name: "Shopping assistant on Gemini", build: "AI proxy Lambda, /assist route with hand-written RAG, Gemini with system instructions and safety settings, an evaluation set of 30 questions.", learn: "Prompting, grounding, hallucination, token cost, evaluating answers.", cost: "Cents per lab", down: "No standing cost beyond phase 6." },
   { p: 8, name: "Data and recommendations", build: "Clickstream to EventBridge, Firehose, S3 lake, Storage Transfer to Cloud Storage, BigQuery baseline, Vertex AI training and batch recommendations copied back to DynamoDB.", learn: "Cross-cloud data movement and egress, training versus inference, baselines and evaluation.", cost: "≈ $3 per lab", down: "Pause the transfer job; delete BigQuery tables and buckets with force_destroy in dev." },
@@ -894,8 +895,8 @@ const COSTS = [
   { h: "NAT Gateway (AWS)", v: "≈ $33 / month each", b: "Bills every hour even with zero traffic. Dev uses one; S3 and DynamoDB traffic goes through free gateway endpoints instead." },
   { h: "Vector Search endpoint (GCP)", v: "≈ $65 to $75 / month", b: "The one Google Cloud item that bills by the hour. Deploy the index for a lab and undeploy it after. BigQuery vector search or pgvector are cheaper fallbacks." },
   { h: "RDS and ElastiCache (AWS)", v: "≈ $12 / month per node", b: "Multi-AZ doubles both. Destroy after each session and reseed the catalog from a script." },
-  { h: "Application Load Balancer (AWS)", v: "≈ $16 / month", b: "Small but constant. Lives in the app stack so it goes away with it." },
-  { h: "Everything if left on", v: "≈ $220 to $240 / month", b: "About $7 to $8 a day across both clouds with every phase running. A four-hour lab session costs about $1.50." },
+  { h: "EKS control plane and nodes (AWS)", v: "≈ $75 + $25 to $50 / month", b: "The control plane bills $0.10 an hour from the moment the cluster exists. Two Graviton Spot nodes add about $25. Create and destroy the cluster with each lab, which takes 10 to 15 minutes each way." },
+  { h: "Everything if left on", v: "≈ $310 to $340 / month", b: "About $10 to $11 a day across both clouds with every phase running. A four-hour lab session costs about $2." },
   { h: "Guardrails on spend", v: "$20 budget per cloud", b: "AWS Budgets and Google Cloud billing budgets alert at 50, 80 and 100 percent, plus a teardown checklist in every phase's README." }
 ];
 document.getElementById("costCards").innerHTML = COSTS.map(c => `<div class="decision"><h3>${c.h}</h3><span class="pick">${c.v}</span><p>${c.b}</p></div>`).join("");
@@ -904,7 +905,7 @@ const DECISIONS = [
   { h: "AI layer on Google Cloud", pick: "Chosen over waiting for Bedrock", b: "The AWS Bedrock quota request has had no answer. Gemini on Vertex AI works on a new account today, and a hybrid design adds GCP experience to the portfolio." },
   { h: "Workload Identity Federation", pick: "Chosen over service-account keys", b: "AWS roles prove who they are with their own credentials and get a Google token that lasts an hour. There is nothing to leak, rotate or store." },
   { h: "One Terraform config, two providers", pick: "aws + google in the same stack", b: "The ai stack declares both providers. The Google identity pool reads AWS role ARNs from AWS resources, and the Lambda reads the pool's audience from Google resources, all in one plan with no copy-pasted IDs." },
-  { h: "ECS Fargate for the web tier", pick: "Chosen over EKS and EC2 Auto Scaling", b: "Same container skills as Kubernetes without the $73 a month control plane or node patching. EKS modules already exist in tfmodules, so an EKS variant is a stretch goal." },
+  { h: "EKS for the web tier", pick: "Chosen over ECS Fargate and EC2 Auto Scaling", b: "Kubernetes is the most requested container skill, and tfmodules already has eks-cluster and eks-node-group. The $73 a month control plane is why the cluster is created and destroyed with each lab." },
   { h: "Vertex AI Vector Search", pick: "Chosen over pgvector in RDS", b: "Managed approximate nearest neighbour search with streaming updates. It costs more to leave running, so it is undeployed between labs, and pgvector remains the documented fallback." },
   { h: "Recommendations computed on GCP, served from AWS", pick: "Batch, copied back nightly", b: "Training and scoring happen on Google Cloud; results are copied into DynamoDB. Product pages never wait on a cross-cloud call, and nothing runs between jobs." }
 ];
@@ -912,7 +913,7 @@ document.getElementById("decisionCards").innerHTML = DECISIONS.map(d => `<div cl
 
 const MODS = [
   { h: "Already in tfmodules", s: "have", items: ["vpc, subnet, internet-gateway, nat-gateway", "route-table, route, route-table-association", "security-group, ec2", "ecr-repository, eks-cluster, eks-node-group", "lambda-function, lambda-permission", "apigatewayv2-api, -route, -integration, -authorizer, -stage", "cognito-user-pool, cognito-user-pool-client", "dynamodb-table, s3-bucket", "cloudwatch-log-group, cloudwatch-metric-alarm", "iam-role, iam-github-oidc, budget"] },
-  { h: "AWS modules to add", s: "gap", items: ["route53, acm, cloudfront, alb, ecs, rds (phase 2)", "step-functions, eventbridge, sqs, sns (phase 3)", "wafv2, kms, secrets-manager, guardduty, cloudtrail (phase 4)", "elasticache (phase 5)", "firehose (phase 8), xray (phase 9)"] },
+  { h: "AWS modules to add", s: "gap", items: ["route53, acm, cloudfront, alb, rds, eks-pod-identity, eks-addons + helm lb controller (phase 2)", "step-functions, eventbridge, sqs, sns (phase 3)", "wafv2, kms, secrets-manager, guardduty, cloudtrail (phase 4)", "elasticache, karpenter (phase 5)", "firehose (phase 8), xray (phase 9)"] },
   { h: "Google Cloud modules to add (none exist yet)", s: "gap", items: ["project-services, billing-budget (phase 6)", "workload-identity-pool (AWS + GitHub providers), service-account", "cloud-run-service, artifact-registry", "vertex-vector-search (index + endpoint)", "storage-bucket, storage-transfer-job, bigquery-dataset (phase 8)", "monitoring-alert-policy (phase 9)"] }
 ];
 document.getElementById("modCards").innerHTML = MODS.map(m => `<div class="card"><h3>${m.h}<span class="tag ${m.s}">${m.s === "have" ? "ready" : "new"}</span></h3><ul>${m.items.map(i => `<li><code>${i}</code></li>`).join("")}</ul></div>`).join("");
