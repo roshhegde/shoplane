@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Shoplane</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap bar">
+      <a class="brand" href="/">Shoplane</a>
+      <form id="search" class="search" role="search">
+        <input id="q" type="search" placeholder="Search products" aria-label="Search products" maxlength="100">
+        <button type="submit">Search</button>
+      </form>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <nav id="categories" class="chips" aria-label="Categories"></nav>
+    <p id="status" class="status" role="status">Loading products…</p>
+    <section id="grid" class="grid" aria-live="polite"></section>
+  </main>
+
+  <footer class="wrap foot">
+    <span>Phase 2: CloudFront → S3 for this page, CloudFront → ALB → EKS → RDS for <code>/api</code>.</span>
+    <span id="served-by"></span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

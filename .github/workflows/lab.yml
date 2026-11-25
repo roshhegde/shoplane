@@ -1,0 +1,51 @@
+# Build, demo, destroy. Start it from the Actions tab:
+#   up    builds network, app, catalog and edge (~25 min), prints the URL
+#   down  deletes the Ingress, then destroys app and network (~15 min)
+#   deploy-catalog  rolls out the newest catalog image to a running lab
+name: lab
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: What to do
+        type: choice
+        options: [up, down, deploy-catalog]
+        default: up
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: lab # never run two labs against the same state at once
+  cancel-in-progress: false
+
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    environment: lab # the deploy role trusts this environment
+    timeout-minutes: 60
+    env:
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET }}
+      CLUSTER_ADMIN_ARNS: ${{ vars.CLUSTER_ADMIN_ARNS }}
+      AWS_REGION: us-east-1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.5
+          terraform_wrapper: false # so "terraform output -raw" prints clean values
+      - uses: azure/setup-kubectl@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+          role-duration-seconds: 3600
+      - name: Run
+        run: |
+          case "${{ inputs.action }}" in
+            up)             scripts/lab-up.sh ;;
+            down)           scripts/lab-down.sh ;;
+            deploy-catalog) scripts/deploy-catalog.sh ;;
+          esac

@@ -39,3 +39,6 @@ build/
 .DS_Store
 .idea/
 .vscode/
+
+# Per-account backend settings
+infra/backend.hcl

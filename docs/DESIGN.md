@@ -79,6 +79,7 @@ Terraform is split into stacks so the expensive layers can be destroyed without 
 - **gcp-foundation** (keep): project services, workload identity pool, service accounts, budget, buckets.
 - **network** (destroy): VPC, NAT gateways.
 - **app** (destroy): EKS cluster and node group, ALB, RDS, ElastiCache.
+- **edge** (can stay): storefront S3 bucket and CloudFront; WAF joins it in phase 4.
 - **serverless** (can stay): API Gateway, Lambda, Step Functions, EventBridge, SQS, SNS, Firehose.
 - **ai** (destroy or undeploy): Vector Search endpoint, Cloud Run service, transfer job, BigQuery tables.
 
@@ -100,8 +101,9 @@ The biggest idle costs are the EKS control plane (about $73 a month plus nodes),
 
 | Status | Modules |
 | --- | --- |
+| Added in phase 2 | vpc (now with subnets, NAT and routes), eks (cluster, node groups, add-ons, Pod Identity, access entries), rds, cloudfront; the AWS Load Balancer Controller is a Helm release in the app stack |
 | Already in tfmodules (AWS) | vpc, subnet, internet-gateway, nat-gateway, route-table, route, route-table-association, security-group, ec2, ecr-repository, eks-cluster, eks-node-group, lambda-function, lambda-permission, apigatewayv2 (api, route, integration, authorizer, stage), cognito-user-pool, cognito-user-pool-client, dynamodb-table, s3-bucket, cloudwatch-log-group, cloudwatch-metric-alarm, iam-role, iam-github-oidc, budget |
-| AWS modules to add | route53, acm, cloudfront, alb, rds, eks-pod-identity, eks-addons (with a Helm release for the AWS Load Balancer Controller), karpenter, step-functions, eventbridge, sqs, sns, wafv2, kms, secrets-manager, guardduty, cloudtrail, elasticache, firehose, xray |
+| AWS modules to add | route53, acm, alb, karpenter, step-functions, eventbridge, sqs, sns, wafv2, kms, secrets-manager, guardduty, cloudtrail, elasticache, firehose, xray |
 | Google Cloud modules to add (none exist yet) | project-services, billing-budget, workload-identity-pool, service-account, cloud-run-service, artifact-registry, vertex-vector-search, storage-bucket, storage-transfer-job, bigquery-dataset, monitoring-alert-policy |
 
 New modules follow the one-module-per-service rule: for example, `rds` covers the instance, subnet group and parameter group.

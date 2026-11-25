@@ -1,0 +1,119 @@
+# The catalog service on EKS. scripts/deploy-catalog.sh fills in the ${...}
+# values from Terraform outputs with envsubst and applies this file.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shoplane
+---
+# Pod Identity maps this service account to the shoplane-catalog IAM role
+# (see infra/app/main.tf), so the pods can read the database secret.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: catalog
+  namespace: shoplane
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog
+  namespace: shoplane
+  labels: { app: catalog }
+spec:
+  replicas: 2
+  selector:
+    matchLabels: { app: catalog }
+  template:
+    metadata:
+      labels: { app: catalog }
+    spec:
+      serviceAccountName: catalog
+      # One pod per AZ when possible, so losing a zone (or a Spot node) leaves one running.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app: catalog }
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: catalog
+          image: ${CATALOG_IMAGE}
+          ports:
+            - containerPort: 8000
+          env:
+            - { name: AWS_REGION, value: "${AWS_REGION}" }
+            - { name: DB_HOST, value: "${DB_HOST}" }
+            - { name: DB_NAME, value: "${DB_NAME}" }
+            - { name: DB_SECRET_ARN, value: "${DB_SECRET_ARN}" }
+            - name: NODE_NAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { memory: 256Mi }
+          # Liveness: restart the container if the process hangs.
+          livenessProbe:
+            httpGet: { path: /api/health, port: 8000 }
+            periodSeconds: 10
+          # Readiness: only receive traffic while the database answers.
+          readinessProbe:
+            httpGet: { path: /api/ready, port: 8000 }
+            periodSeconds: 5
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: ["ALL"] }
+---
+# Voluntary disruptions (node drains, Spot rebalancing, upgrades) must leave one pod up.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: catalog
+  namespace: shoplane
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels: { app: catalog }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog
+  namespace: shoplane
+spec:
+  type: ClusterIP
+  selector: { app: catalog }
+  ports:
+    - port: 80
+      targetPort: 8000
+---
+# The AWS Load Balancer Controller sees this Ingress and builds an
+# internet-facing ALB in the public subnets, sending traffic straight to pod IPs.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: catalog
+  namespace: shoplane
+  annotations:
+    alb.ingress.kubernetes.io/load-balancer-name: shoplane-alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /api/ready
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "10"
+    alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=15
+    alb.ingress.kubernetes.io/tags: Project=shoplane
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: catalog
+                port:
+                  number: 80

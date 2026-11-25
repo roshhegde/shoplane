@@ -1,0 +1,3 @@
+budget_email = "you@example.com"
+# Set to true only if this account has never had the GitHub OIDC provider.
+create_oidc_provider = false

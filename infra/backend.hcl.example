@@ -1,0 +1,4 @@
+# Copy to infra/backend.hcl (gitignored) after applying aws-foundation, then
+# init each stack with:  terraform init -backend-config=../backend.hcl
+bucket = "shoplane-tfstate-123456789012"
+region = "us-east-1"
