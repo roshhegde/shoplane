@@ -1,4 +1,6 @@
-# Copy to infra/backend.hcl (gitignored) after applying aws-foundation, then
-# init each stack with:  terraform init -backend-config=../backend.hcl
+# Don't copy this as is: 123456789012 is a placeholder. After applying aws-foundation,
+# create infra/backend.hcl (gitignored) with the real bucket from its state_bucket output:
+#   printf 'bucket = "%s"\nregion = "us-east-1"\n' "$(terraform output -raw state_bucket)" > ../backend.hcl
+# Then init each stack with:  terraform init -backend-config=../backend.hcl
 bucket = "shoplane-tfstate-123456789012"
 region = "us-east-1"

@@ -99,10 +99,17 @@ Needs Terraform 1.10 or later and the AWS CLI, signed in as an admin of your acc
    cd infra/aws-foundation
    cp terraform.tfvars.example terraform.tfvars   # set budget_email
    terraform init && terraform apply
-   cp ../backend.hcl.example ../backend.hcl       # set bucket to the state_bucket output
+
+   # Write the real bucket name (from the apply's output) into backend.hcl.
+   # Don't copy backend.hcl.example as is: its 123456789012 is a placeholder.
+   printf 'bucket = "%s"\nregion = "us-east-1"\n' "$(terraform output -raw state_bucket)" > ../backend.hcl
+   cat ../backend.hcl
+
+   # Only now switch on the S3 backend and copy the local state into it (answer "yes").
    cp backend.tf.example backend.tf
    terraform init -migrate-state -backend-config=../backend.hcl
    ```
+   If `init -migrate-state` says the bucket `shoplane-tfstate-123456789012` doesn't exist, `backend.hcl` still has the placeholder. Move `backend.tf` aside, rerun the `printf` line, then put `backend.tf` back.
 2. In GitHub, **Settings → Environments**, create an environment called `lab`.
 3. In **Settings → Secrets and variables → Actions → Variables**, add:
    - `AWS_ROLE_ARN`: the `github_role_arn` output
