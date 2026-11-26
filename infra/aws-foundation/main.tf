@@ -35,6 +35,28 @@ module "catalog_repo" {
 # GitHub signs a short-lived OIDC token for each workflow run. AWS STS checks
 # the signature and the "sub" claim, then hands back 1-hour credentials for
 # this role. Only main and the "lab" environment of this repo are trusted.
+# GitHub can write the repo in the sub claim as plain owner/name or with
+# its numeric IDs (owner@id/name@id); the IDs form cannot be reused if the
+# repo is deleted and recreated by someone else. Both forms are trusted.
+# The IDs are read from GitHub's public API at plan time, so only
+# var.github_repo needs setting.
+
+data "http" "github_repo" {
+  url             = "https://api.github.com/repos/${var.github_repo}"
+  request_headers = { Accept = "application/vnd.github+json" }
+
+  lifecycle {
+    postcondition {
+      condition     = self.status_code == 200
+      error_message = "Could not read ${var.github_repo} from the GitHub API (status ${self.status_code})."
+    }
+  }
+}
+
+locals {
+  github_repo_json     = jsondecode(data.http.github_repo.response_body)
+  github_repo_with_ids = "${local.github_repo_json.owner.login}@${local.github_repo_json.owner.id}/${local.github_repo_json.name}@${local.github_repo_json.id}"
+}
 
 module "github_deploy" {
   source = "git::https://github.com/roshhegde/tfmodules.git//modules/iam-github-oidc?ref=v1.1.0"
@@ -44,10 +66,12 @@ module "github_deploy" {
   create_oidc_provider = var.create_oidc_provider
   oidc_provider_arn    = var.create_oidc_provider ? null : "arn:aws:iam::${local.account_id}:oidc-provider/token.actions.githubusercontent.com"
 
-  subjects = [
-    "repo:${var.github_repo}:ref:refs/heads/main",
-    "repo:${var.github_repo}:environment:lab",
-  ]
+  subjects = flatten([
+    for repo in [var.github_repo, local.github_repo_with_ids] : [
+      "repo:${repo}:ref:refs/heads/main",
+      "repo:${repo}:environment:lab",
+    ]
+  ])
 
   # Phase 2 builds a VPC, EKS, RDS and CloudFront, which touch dozens of
   # services. PowerUserAccess covers everything except IAM; the inline policy
