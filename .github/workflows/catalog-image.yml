@@ -5,7 +5,7 @@ name: catalog-image
 on:
   push:
     branches: [main]
-    paths: ["services/catalog/**"]
+    paths: ["services/catalog/**", ".github/workflows/catalog-image.yml"]
   workflow_dispatch:
 
 permissions:
@@ -15,7 +15,20 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-24.04-arm # native arm64 runner, no emulation needed
+    # Same environment as the lab workflow, so AWS_ROLE_ARN works whether it is
+    # set as a repository variable or a "lab" environment variable. The deploy
+    # role trusts environment:lab, so the OIDC token still matches.
+    environment: lab
     steps:
+      - name: Check AWS_ROLE_ARN is set
+        env:
+          ROLE: ${{ vars.AWS_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE" ]; then
+            echo "::error::AWS_ROLE_ARN is empty. Set it under Settings > Secrets and variables > Actions > Variables (repository or the lab environment)."
+            exit 1
+          fi
+          echo "Using role $ROLE"
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
         with:
