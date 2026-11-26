@@ -29,6 +29,13 @@ jobs:
             exit 1
           fi
           echo "Using role $ROLE"
+      # Prints the identity claims AWS checks against the role's trust policy
+      # (sub, aud). Only decoded claims are printed, never the token itself.
+      - name: Show GitHub OIDC claims
+        run: |
+          TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | jq -r .value)
+          echo "$TOKEN" | python3 -c 'import sys,json,base64; p=sys.stdin.read().split(".")[1]; c=json.loads(base64.urlsafe_b64decode(p+"="*(-len(p)%4))); print(json.dumps({k:c.get(k) for k in ["sub","aud","repository","environment","ref","job_workflow_ref"]}, indent=2))'
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
         with:
